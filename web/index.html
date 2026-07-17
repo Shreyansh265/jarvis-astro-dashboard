@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>JARVIS Astro Dashboard</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="wrap">
+
+  <header class="masthead">
+    <div>
+      <h1 class="masthead-title">Jarvis — Mundane Astrology Desk</h1>
+      <div class="masthead-sub">Signals · Backtests · Paper Trading · Self-Review</div>
+    </div>
+    <div class="masthead-clock" id="clock"></div>
+  </header>
+
+  <div class="orrery-panel">
+    <div id="orrery-container"></div>
+  </div>
+
+  <div class="grid">
+
+    <!-- LEFT: Portfolio + Paper Trading -->
+    <div>
+      <div class="panel">
+        <h2>Your Portfolio</h2>
+        <form id="add-holding-form">
+          <div class="form-row">
+            <input id="f-ticker" placeholder="Ticker (e.g. AAPL)" required>
+            <select id="f-exchange" style="width:80px">
+              <option value="NYSE">NYSE</option>
+              <option value="TSX">TSX</option>
+            </select>
+          </div>
+          <div class="form-row">
+            <input id="f-price" type="number" step="0.01" placeholder="Buy price ($)" required>
+            <input id="f-qty" type="number" step="0.0001" placeholder="Qty (default 1)">
+          </div>
+          <button type="submit" style="width:100%">Add holding</button>
+        </form>
+        <div id="portfolio-list" style="margin-top:14px"></div>
+      </div>
+
+      <div class="panel">
+        <h2>Paper Trading Bot</h2>
+        <div class="cash-readout" id="paper-cash">—</div>
+        <div id="paper-trades"></div>
+      </div>
+    </div>
+
+    <!-- CENTER: Sector Signals -->
+    <div class="panel">
+      <h2>This Week's Astrological Signals</h2>
+      <div class="sector-grid" id="sector-grid"></div>
+    </div>
+
+    <!-- RIGHT: Chat -->
+    <div class="panel">
+      <h2>Ask the Desk</h2>
+      <div class="chat-log" id="chat-log"></div>
+      <form id="chat-form" class="chat-input-row">
+        <input id="chat-input" placeholder="Why is Financials bearish?">
+        <button type="submit">Ask</button>
+      </form>
+    </div>
+
+  </div>
+
+  <div class="panel review-strip">
+    <h2>Weekly Review &amp; Lessons Learned</h2>
+    <div id="review-strip"></div>
+  </div>
+
+  <div class="disclaimer">
+    This dashboard is a systematic backtestable rule engine for financial astrology, not investment advice.
+    No empirical evidence supports planetary positions predicting market moves — every signal shown here
+    is scored against real historical hit-rates so you can judge its track record for yourself.
+    Paper trading uses simulated money only.
+  </div>
+
+</div>
+
+<script src="config.js"></script>
+<script src="supabase-client.js"></script>
+<script src="orrery.js"></script>
+<script src="chat.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
