@@ -1,46 +1,53 @@
 @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;1,500&family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600&display=swap');
 
 :root {
-  --ink-void: #0A0E1A;
-  --ink-panel: #12182B;
-  --ink-panel-raised: #171F38;
+  --ink-void: #05070D;
+  --ink-panel: #0C1220;
+  --ink-panel-raised: #121A2E;
   --brass: #C9A24B;
   --brass-dim: #8B7135;
-  --parchment: #EDE6D3;
-  --parchment-dim: #8D89A0;
-  --bullish: #4FA893;
-  --bearish: #C1615C;
-  --hairline: rgba(201, 162, 75, 0.16);
-  --radius: 3px;
+  --cyan: #3FE9D8;
+  --cyan-dim: #1E7F78;
+  --parchment: #E4EAF5;
+  --parchment-dim: #7C8AAA;
+  --bullish: #38D6A8;
+  --bearish: #FF5C6C;
+  --hairline: rgba(63, 233, 216, 0.12);
+  --hairline-warm: rgba(201, 162, 75, 0.16);
+  --radius: 4px;
 }
 
 * { box-sizing: border-box; }
 
 body {
   margin: 0;
-  background: radial-gradient(ellipse at top, #0F1428 0%, var(--ink-void) 60%);
+  background:
+    repeating-linear-gradient(0deg, rgba(63,233,216,0.02) 0px, rgba(63,233,216,0.02) 1px, transparent 1px, transparent 3px),
+    radial-gradient(ellipse at top, #0B1024 0%, var(--ink-void) 65%);
   color: var(--parchment);
   font-family: 'Inter', sans-serif;
   min-height: 100vh;
 }
 
-.wrap { max-width: 1400px; margin: 0 auto; padding: 32px 24px 80px; }
+.wrap { max-width: 1500px; margin: 0 auto; padding: 28px 24px 80px; }
 
 /* ---------- Header ---------- */
 header.masthead {
   display: flex; align-items: center; justify-content: space-between;
-  padding-bottom: 20px; margin-bottom: 28px;
+  padding-bottom: 18px; margin-bottom: 18px;
   border-bottom: 1px solid var(--hairline);
 }
 .masthead-title {
   font-family: 'Cormorant Garamond', serif;
-  font-size: 34px; font-weight: 600; letter-spacing: 0.02em;
+  font-size: 32px; font-weight: 600; letter-spacing: 0.02em;
   color: var(--brass);
   margin: 0;
+  text-shadow: 0 0 18px rgba(201, 162, 75, 0.35);
 }
+.masthead-title-dim { color: var(--parchment-dim); font-size: 20px; text-shadow: none; }
 .masthead-sub {
   font-family: 'IBM Plex Mono', monospace;
-  font-size: 11px; color: var(--parchment-dim);
+  font-size: 11px; color: var(--cyan-dim);
   letter-spacing: 0.08em; text-transform: uppercase; margin-top: 4px;
 }
 .masthead-clock {
@@ -48,30 +55,32 @@ header.masthead {
   text-align: right;
 }
 
-/* ---------- Orrery (signature element) ---------- */
-.orrery-panel {
-  display: flex; justify-content: center; align-items: center;
-  padding: 20px 0 32px;
+/* ---------- Tab navigation ---------- */
+.tabs {
+  display: flex; gap: 4px; margin-bottom: 20px; flex-wrap: wrap;
+  border-bottom: 1px solid var(--hairline);
 }
-.orrery { width: 340px; height: 340px; }
-.orrery-rim { fill: none; stroke: var(--brass-dim); stroke-width: 1; }
-.orrery-ring { fill: none; stroke: var(--hairline); stroke-width: 1; }
-.orrery-core { fill: var(--ink-panel); stroke: var(--hairline); stroke-width: 1; }
-.orrery-spoke { stroke: var(--hairline); stroke-width: 1; }
-.orrery-sign-glyph { fill: var(--brass-dim); font-size: 15px; font-family: serif; }
-.orrery-planet-dot { fill: var(--ink-panel-raised); stroke: var(--brass); stroke-width: 1.2; }
-.orrery-planet-dot.retrograde { stroke: var(--bearish); }
-.orrery-planet-glyph { fill: var(--parchment); font-size: 14px; }
-
-/* ---------- Layout grid ---------- */
-.grid {
-  display: grid;
-  grid-template-columns: 300px 1fr 340px;
-  gap: 20px;
-  align-items: start;
+.tab-btn {
+  background: transparent; border: none; color: var(--parchment-dim);
+  font-family: 'IBM Plex Mono', monospace; font-size: 12px; text-transform: uppercase;
+  letter-spacing: 0.06em; padding: 12px 16px; cursor: pointer;
+  border-bottom: 2px solid transparent; margin-bottom: -1px; font-weight: 500;
+  transition: color 0.15s;
 }
-@media (max-width: 1050px) { .grid { grid-template-columns: 1fr; } }
+.tab-btn:hover { color: var(--parchment); background: transparent; }
+.tab-btn.active {
+  color: var(--cyan); border-bottom-color: var(--cyan);
+  text-shadow: 0 0 12px rgba(63, 233, 216, 0.5);
+}
+.tab-pane { display: none; }
+.tab-pane.active { display: block; }
 
+/* ---------- Main layout: tab content + persistent chat rail ---------- */
+.main-layout { display: grid; grid-template-columns: 1fr 340px; gap: 20px; align-items: start; }
+@media (max-width: 1050px) { .main-layout { grid-template-columns: 1fr; } }
+.tab-content > .tab-pane > .panel + .panel { margin-top: 20px; }
+
+/* ---------- Panels ---------- */
 .panel {
   background: var(--ink-panel);
   border: 1px solid var(--hairline);
@@ -79,10 +88,39 @@ header.masthead {
   padding: 18px 18px 20px;
 }
 .panel h2 {
-  font-family: 'Cormorant Garamond', serif; font-weight: 600; font-size: 19px;
+  font-family: 'Cormorant Garamond', serif; font-weight: 600; font-size: 18px;
   color: var(--brass); margin: 0 0 14px; letter-spacing: 0.01em;
 }
-.panel + .panel { margin-top: 20px; }
+
+/* ---------- Orrery (signature element) ---------- */
+.orrery-panel { display: flex; justify-content: center; align-items: center; padding: 10px 0; }
+.orrery { width: 360px; height: 360px; filter: drop-shadow(0 0 24px rgba(63, 233, 216, 0.18)); }
+.orrery-rim { fill: none; stroke: var(--brass-dim); stroke-width: 1; }
+.orrery-ring { fill: none; stroke: var(--hairline); stroke-width: 1; }
+.orrery-core { fill: var(--ink-panel-raised); stroke: var(--cyan-dim); stroke-width: 1; }
+.orrery-spoke { stroke: var(--hairline); stroke-width: 1; }
+.orrery-sign-glyph { fill: var(--brass-dim); font-size: 15px; font-family: serif; }
+.orrery-planet-dot { fill: var(--ink-panel-raised); stroke: var(--cyan); stroke-width: 1.4; }
+.orrery-planet-dot.retrograde { stroke: var(--bearish); }
+.orrery-planet-glyph { fill: var(--parchment); font-size: 14px; }
+
+/* ---------- Overview tab ---------- */
+.brief-panel { border-color: var(--hairline-warm); }
+.eli5-text { font-size: 14px; line-height: 1.7; color: var(--parchment); }
+.movers-row { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 20px; }
+@media (max-width: 700px) { .movers-row { grid-template-columns: 1fr; } }
+.movers-note { margin-bottom: 10px; }
+.mover-row {
+  display: flex; align-items: center; gap: 10px; padding: 8px 0;
+  border-bottom: 1px solid var(--hairline); font-size: 13px; flex-wrap: wrap;
+}
+.mover-row:last-child { border-bottom: none; }
+.mover-ticker { font-family: 'IBM Plex Mono', monospace; font-weight: 600; min-width: 52px; }
+.mover-pct { font-family: 'IBM Plex Mono', monospace; font-weight: 600; min-width: 60px; }
+.overview-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 20px; }
+@media (max-width: 900px) { .overview-grid { grid-template-columns: 1fr; } }
+.pick-preview-row { display: flex; align-items: center; gap: 10px; padding: 6px 0; border-bottom: 1px solid var(--hairline); font-size: 13px; }
+.pick-preview-row:last-child { border-bottom: none; }
 
 /* ---------- Sector signal cards ---------- */
 .sector-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
@@ -95,8 +133,8 @@ header.masthead {
   border-radius: var(--radius);
   padding: 12px 14px;
 }
-.sector-card.bullish { border-left-color: var(--bullish); }
-.sector-card.bearish { border-left-color: var(--bearish); }
+.sector-card.bullish, .stock-card.bullish { border-left-color: var(--bullish); }
+.sector-card.bearish, .stock-card.bearish { border-left-color: var(--bearish); }
 .sector-card-top { display: flex; justify-content: space-between; align-items: baseline; }
 .sector-name { font-weight: 600; font-size: 14px; }
 .sector-ticker { font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: var(--parchment-dim); }
@@ -104,11 +142,62 @@ header.masthead {
 .sector-direction.bullish { color: var(--bullish); }
 .sector-direction.bearish { color: var(--bearish); }
 .possibility-bar-track { height: 4px; background: var(--hairline); border-radius: 2px; margin: 8px 0 6px; overflow: hidden; }
-.possibility-bar-fill { height: 100%; background: var(--brass); }
+.possibility-bar-fill { height: 100%; background: linear-gradient(90deg, var(--brass), var(--cyan)); }
 .sector-reason { font-size: 12px; color: var(--parchment-dim); line-height: 1.5; margin-top: 4px; }
 
+/* ---------- Aspects ---------- */
+.aspect-row {
+  display: flex; align-items: center; gap: 10px; padding: 8px 0;
+  border-bottom: 1px solid var(--hairline); font-size: 13px;
+}
+.aspect-row:last-child { border-bottom: none; }
+.aspect-tone { font-family: 'IBM Plex Mono', monospace; font-size: 11px; text-transform: uppercase; min-width: 90px; color: var(--parchment-dim); }
+.aspect-tone.bullish { color: var(--bullish); }
+.aspect-tone.bearish { color: var(--bearish); }
+
+/* ---------- Astro Stocks tab ---------- */
+.stocks-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px; }
+.stock-card {
+  background: var(--ink-panel-raised); border: 1px solid var(--hairline);
+  border-left: 3px solid var(--parchment-dim); border-radius: var(--radius); padding: 12px 14px;
+}
+
+/* ---------- Paper Trading tab ---------- */
+.trading-stats-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 16px; }
+@media (max-width: 700px) { .trading-stats-row { grid-template-columns: 1fr; } }
+.stat-tile { background: var(--ink-panel-raised); border: 1px solid var(--hairline); border-radius: var(--radius); padding: 12px 14px; }
+.stat-label { font-family: 'IBM Plex Mono', monospace; font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--parchment-dim); }
+.stat-value { font-family: 'IBM Plex Mono', monospace; font-size: 22px; color: var(--brass); margin-top: 4px; }
+.stat-value.bullish { color: var(--bullish); }
+.stat-value.bearish { color: var(--bearish); }
+
+.goal-track { margin: 6px 0 16px; }
+.goal-track-label { font-size: 11px; color: var(--parchment-dim); margin-bottom: 6px; }
+.goal-track-bar { height: 8px; background: var(--hairline); border-radius: 4px; overflow: hidden; }
+.goal-track-fill { height: 100%; width: 0%; background: linear-gradient(90deg, var(--cyan-dim), var(--cyan)); box-shadow: 0 0 10px rgba(63,233,216,0.5); transition: width 0.4s; }
+
+.sparkline-wrap { margin-top: 6px; }
+.sparkline { width: 100%; height: 70px; }
+.sparkline.bullish { color: var(--bullish); }
+.sparkline.bearish { color: var(--bearish); }
+
+.trade-row { padding: 8px 0; border-bottom: 1px solid var(--hairline); font-size: 12px; }
+.trade-row:last-child { border-bottom: none; }
+.trade-action { font-family: 'IBM Plex Mono', monospace; font-weight: 600; }
+.trade-action.BUY { color: var(--bullish); }
+.trade-action.SELL { color: var(--parchment-dim); }
+.trade-action.SHORT { color: var(--bearish); }
+.trade-action.COVER { color: var(--parchment-dim); }
+.trade-reasoning { color: var(--parchment-dim); margin-top: 3px; line-height: 1.4; }
+
+/* ---------- Learning tab ---------- */
+.weight-row { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--hairline); }
+.weight-row:last-child { border-bottom: none; }
+.weight-planet { font-family: 'IBM Plex Mono', monospace; font-size: 12px; min-width: 64px; }
+.weight-bar { flex: 1; margin: 0; }
+
 /* ---------- Forms / lists ---------- */
-input, button, textarea {
+input, button, textarea, select {
   font-family: 'Inter', sans-serif; font-size: 13px;
   background: var(--ink-panel-raised); color: var(--parchment);
   border: 1px solid var(--hairline); border-radius: var(--radius);
@@ -119,7 +208,8 @@ button {
   border: none; font-weight: 600; letter-spacing: 0.02em;
 }
 button:hover { background: #dab35d; }
-button.ghost { background: transparent; color: var(--parchment-dim); border: 1px solid var(--hairline); font-weight: 400; }
+button.ghost { background: transparent; color: var(--cyan-dim); border: 1px solid var(--hairline); font-weight: 400; }
+button.ghost:hover { color: var(--cyan); border-color: var(--cyan-dim); }
 .form-row { display: flex; gap: 8px; margin-bottom: 8px; }
 .form-row input { flex: 1; min-width: 0; }
 
@@ -129,30 +219,23 @@ button.ghost { background: transparent; color: var(--parchment-dim); border: 1px
 }
 .holding:last-child { border-bottom: none; }
 .holding-meta { font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: var(--parchment-dim); }
+.holding-meta.bullish { color: var(--bullish); }
+.holding-meta.bearish { color: var(--bearish); }
 
-.trade-row { padding: 8px 0; border-bottom: 1px solid var(--hairline); font-size: 12px; }
-.trade-row:last-child { border-bottom: none; }
-.trade-action { font-family: 'IBM Plex Mono', monospace; font-weight: 600; }
-.trade-action.BUY { color: var(--bullish); }
-.trade-action.SELL { color: var(--bearish); }
-.trade-reasoning { color: var(--parchment-dim); margin-top: 3px; line-height: 1.4; }
+.bullish { color: var(--bullish); }
+.bearish { color: var(--bearish); }
 
-.cash-readout {
-  font-family: 'IBM Plex Mono', monospace; font-size: 22px; color: var(--brass);
-  margin-bottom: 12px;
-}
-
-/* ---------- Chat ---------- */
-.chat-log { height: 360px; overflow-y: auto; margin-bottom: 10px; padding-right: 4px; }
+/* ---------- Chat rail ---------- */
+.chat-rail { position: sticky; top: 20px; }
+.chat-log { height: 480px; overflow-y: auto; margin-bottom: 10px; padding-right: 4px; }
 .chat-msg { margin-bottom: 12px; font-size: 13px; line-height: 1.5; }
 .chat-msg.user { color: var(--parchment); }
 .chat-msg.agent { color: var(--parchment-dim); }
-.chat-msg .role { font-family: 'IBM Plex Mono', monospace; font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--brass-dim); display: block; margin-bottom: 3px; }
+.chat-msg .role { font-family: 'IBM Plex Mono', monospace; font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--cyan-dim); display: block; margin-bottom: 3px; }
 .chat-input-row { display: flex; gap: 8px; }
 .chat-input-row input { flex: 1; }
 
-/* ---------- Weekly review strip ---------- */
-.review-strip { margin-top: 28px; }
+/* ---------- Weekly review ---------- */
 .review-item { padding: 12px 0; border-bottom: 1px solid var(--hairline); font-size: 13px; }
 .review-item:last-child { border-bottom: none; }
 .review-summary { color: var(--parchment); }

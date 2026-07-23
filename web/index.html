@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>JARVIS Astro Dashboard</title>
+<title>Graha — Astro Trading Desk</title>
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -11,74 +11,163 @@
 
   <header class="masthead">
     <div>
-      <h1 class="masthead-title">Jarvis — Mundane Astrology Desk</h1>
-      <div class="masthead-sub">Signals · Backtests · Paper Trading · Self-Review</div>
+      <h1 class="masthead-title">Graha <span class="masthead-title-dim">— Astro Trading Desk</span></h1>
+      <div class="masthead-sub">17 years reading the sky for markets · Signals · Astro Stocks · Paper Trading · Learning</div>
     </div>
     <div class="masthead-clock" id="clock"></div>
   </header>
 
-  <div class="orrery-panel">
-    <div id="orrery-container"></div>
-  </div>
+  <nav class="tabs" id="tab-nav">
+    <button class="tab-btn active" data-tab="overview">Overview</button>
+    <button class="tab-btn" data-tab="signals">This Week's Signals</button>
+    <button class="tab-btn" data-tab="stocks">Astro Stocks</button>
+    <button class="tab-btn" data-tab="trading">Paper Trading</button>
+    <button class="tab-btn" data-tab="learning">Learning</button>
+  </nav>
 
-  <div class="grid">
+  <div class="main-layout">
+    <div class="tab-content">
 
-    <!-- LEFT: Portfolio + Paper Trading -->
-    <div>
-      <div class="panel">
-        <h2>Your Portfolio</h2>
-        <form id="add-holding-form">
-          <div class="form-row">
-            <input id="f-ticker" placeholder="Ticker (e.g. AAPL)" required>
-            <select id="f-exchange" style="width:80px">
-              <option value="NYSE">NYSE</option>
-              <option value="TSX">TSX</option>
-            </select>
+      <!-- ============ OVERVIEW ============ -->
+      <section class="tab-pane active" id="tab-overview">
+        <div class="panel brief-panel">
+          <h2>Graha's Brief</h2>
+          <div id="eli5-brief" class="eli5-text"></div>
+        </div>
+
+        <div class="movers-row">
+          <div class="panel">
+            <h2>Top Gainers Today</h2>
+            <div class="empty-note movers-note">Within Graha's tracked watchlist, not the whole market.</div>
+            <div id="gainers-list"></div>
           </div>
-          <div class="form-row">
-            <input id="f-price" type="number" step="0.01" placeholder="Buy price ($)" required>
-            <input id="f-qty" type="number" step="0.0001" placeholder="Qty (default 1)">
+          <div class="panel">
+            <h2>Top Losers Today</h2>
+            <div class="empty-note movers-note">Within Graha's tracked watchlist, not the whole market.</div>
+            <div id="losers-list"></div>
           </div>
-          <button type="submit" style="width:100%">Add holding</button>
-        </form>
-        <div id="portfolio-list" style="margin-top:14px"></div>
-      </div>
+        </div>
 
-      <div class="panel">
-        <h2>Paper Trading Bot</h2>
-        <div class="cash-readout" id="paper-cash">—</div>
-        <div id="paper-trades"></div>
-      </div>
+        <div class="overview-grid">
+          <div class="panel">
+            <h2>Your Portfolio</h2>
+            <form id="add-holding-form">
+              <div class="form-row">
+                <input id="f-ticker" placeholder="Ticker (e.g. AAPL)" required>
+                <select id="f-exchange" style="width:80px">
+                  <option value="NYSE">NYSE</option>
+                  <option value="TSX">TSX</option>
+                </select>
+              </div>
+              <div class="form-row">
+                <input id="f-price" type="number" step="0.01" placeholder="Buy price ($)" required>
+                <input id="f-qty" type="number" step="0.0001" placeholder="Qty (default 1)">
+              </div>
+              <button type="submit" style="width:100%">Add holding</button>
+            </form>
+            <div id="portfolio-list" style="margin-top:14px"></div>
+          </div>
+
+          <div class="panel">
+            <h2>Graha's Picks Right Now</h2>
+            <div id="picks-preview"></div>
+            <button class="ghost" style="margin-top:10px;width:100%" data-goto-tab="stocks">See all Astro Stocks →</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============ SIGNALS ============ -->
+      <section class="tab-pane" id="tab-signals">
+        <div class="panel orrery-panel">
+          <div id="orrery-container"></div>
+        </div>
+        <div class="panel">
+          <h2>This Week's Astrological Signals</h2>
+          <div class="sector-grid" id="sector-grid"></div>
+        </div>
+        <div class="panel">
+          <h2>Today's Aspects</h2>
+          <div id="aspects-list"></div>
+        </div>
+      </section>
+
+      <!-- ============ ASTRO STOCKS ============ -->
+      <section class="tab-pane" id="tab-stocks">
+        <div class="panel">
+          <h2>Astro Stocks</h2>
+          <div class="empty-note movers-note">Every individual stock Graha has suggested within a signaled sector, tracked from the day it was suggested until you remove it.</div>
+          <div id="stocks-list" class="stocks-grid"></div>
+        </div>
+      </section>
+
+      <!-- ============ PAPER TRADING ============ -->
+      <section class="tab-pane" id="tab-trading">
+        <div class="panel">
+          <h2>Graha's Paper Trading Bot</h2>
+          <div class="trading-stats-row">
+            <div class="stat-tile">
+              <div class="stat-label">Cash</div>
+              <div class="stat-value" id="paper-cash">—</div>
+            </div>
+            <div class="stat-tile">
+              <div class="stat-label">Total Equity</div>
+              <div class="stat-value" id="paper-equity">—</div>
+            </div>
+            <div class="stat-tile">
+              <div class="stat-label">Month to Date</div>
+              <div class="stat-value" id="paper-mtd">—</div>
+            </div>
+          </div>
+          <div class="goal-track">
+            <div class="goal-track-label">Target: 15%/month (aspirational, simulated money only — not a guarantee)</div>
+            <div class="goal-track-bar"><div class="goal-track-fill" id="goal-track-fill"></div></div>
+          </div>
+          <div id="equity-sparkline" class="sparkline-wrap"></div>
+        </div>
+        <div class="panel">
+          <h2>Open Positions</h2>
+          <div id="open-positions"></div>
+        </div>
+        <div class="panel">
+          <h2>Trade Ledger</h2>
+          <div id="paper-trades"></div>
+        </div>
+      </section>
+
+      <!-- ============ LEARNING ============ -->
+      <section class="tab-pane" id="tab-learning">
+        <div class="panel">
+          <h2>Graha's Confidence by Planet</h2>
+          <div id="rule-weights-list"></div>
+        </div>
+        <div class="panel">
+          <h2>Mistakes Graha Remembers</h2>
+          <div id="mistakes-list"></div>
+        </div>
+        <div class="panel">
+          <h2>Weekly Review History</h2>
+          <div id="review-strip"></div>
+        </div>
+      </section>
+
     </div>
 
-    <!-- CENTER: Sector Signals -->
-    <div class="panel">
-      <h2>This Week's Astrological Signals</h2>
-      <div class="sector-grid" id="sector-grid"></div>
-    </div>
-
-    <!-- RIGHT: Chat -->
-    <div class="panel">
-      <h2>Ask the Desk</h2>
+    <!-- ============ PERSISTENT CHAT RAIL ============ -->
+    <aside class="chat-rail panel">
+      <h2>Ask Graha</h2>
       <div class="chat-log" id="chat-log"></div>
       <form id="chat-form" class="chat-input-row">
         <input id="chat-input" placeholder="Why is Financials bearish?">
         <button type="submit">Ask</button>
       </form>
-    </div>
-
-  </div>
-
-  <div class="panel review-strip">
-    <h2>Weekly Review &amp; Lessons Learned</h2>
-    <div id="review-strip"></div>
+    </aside>
   </div>
 
   <div class="disclaimer">
     This dashboard is a systematic backtestable rule engine for financial astrology, not investment advice.
     No empirical evidence supports planetary positions predicting market moves — every signal shown here
     is scored against real historical hit-rates so you can judge its track record for yourself.
-    Paper trading uses simulated money only.
+    Paper trading uses simulated money only. The 15%/month figure is a tracked target, never a guarantee.
   </div>
 
 </div>
@@ -87,6 +176,9 @@
 <script src="supabase-client.js"></script>
 <script src="orrery.js"></script>
 <script src="chat.js"></script>
+<script src="tabs.js"></script>
+<script src="signals-stocks.js"></script>
+<script src="trading-learning.js"></script>
 <script src="app.js"></script>
 </body>
 </html>

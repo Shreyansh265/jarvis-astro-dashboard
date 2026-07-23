@@ -1,25 +1,72 @@
-const dataCache = { latestPredictions: [], portfolio: [], paperAccount: null, recentTrades: [], weeklyReviews: [] };
+const dataCache = {
+  latestLog: null,
+  latestPredictions: [],
+  portfolio: [],
+  paperAccount: null,
+  recentTrades: [],
+  weeklyReviews: [],
+  suggestedStocks: [],
+  marketSnapshot: [],
+  dailyBrief: null,
+  ruleWeights: [],
+  equityHistory: [],
+  mistakes: [],
+};
 
 async function loadAll() {
-  const [latestLog, predictions, portfolio, paperAccount, recentTrades, weeklyReviews] = await Promise.all([
+  const [
+    latestLog, predictions, portfolio, paperAccount, recentTrades, weeklyReviews,
+    suggestedStocks, marketSnapshot, dailyBriefs, ruleWeights, equityHistory, mistakes,
+  ] = await Promise.all([
     SB.select("planetary_log", "order=date.desc&limit=1"),
-    SB.select("predictions", "order=date.desc&limit=40"),
+    SB.select("predictions", "order=date.desc,created_at.desc&limit=40"),
     SB.select("portfolio", "order=created_at.desc"),
     SB.select("paper_account", "limit=1"),
-    SB.select("paper_trades", "order=created_at.desc&limit=15"),
-    SB.select("weekly_reviews", "order=week_start.desc&limit=4"),
+    SB.select("paper_trades", "order=created_at.desc&limit=50"),
+    SB.select("weekly_reviews", "order=week_start.desc&limit=6"),
+    SB.select("suggested_stocks", "is_active=eq.true&order=date_suggested.desc"),
+    SB.select("market_snapshot", "order=date.desc&limit=200"),
+    SB.select("daily_briefs", "order=date.desc&limit=1"),
+    SB.select("rule_weights", "order=weight.desc"),
+    SB.select("equity_history", "order=date.asc&limit=90"),
+    SB.select("predictions", "was_correct=eq.false&order=date.desc&limit=8"),
   ]);
 
+  dataCache.latestLog = latestLog[0] || null;
   dataCache.latestPredictions = dedupeLatestPerSector(predictions);
   dataCache.portfolio = portfolio;
   dataCache.paperAccount = paperAccount[0] || null;
   dataCache.recentTrades = recentTrades;
   dataCache.weeklyReviews = weeklyReviews;
+  dataCache.suggestedStocks = suggestedStocks;
+  dataCache.marketSnapshot = marketSnapshot;
+  dataCache.dailyBrief = dailyBriefs[0] || null;
+  dataCache.ruleWeights = ruleWeights;
+  dataCache.equityHistory = equityHistory;
+  dataCache.mistakes = mistakes;
 
-  if (latestLog[0]) renderZodiacWheel(document.getElementById("orrery-container"), latestLog[0].positions);
-  renderSectorCards();
+  // Overview tab
+  renderBrief();
+  renderMovers();
   renderPortfolio();
+  renderPicksPreview();
+
+  // This Week's Signals tab
+  if (dataCache.latestLog) renderZodiacWheel(document.getElementById("orrery-container"), dataCache.latestLog.positions);
+  renderSectorCards();
+  renderAspects();
+
+  // Astro Stocks tab
+  renderAstroStocks();
+
+  // Paper Trading tab
   renderPaperTrading();
+  renderOpenPositions();
+  renderEquitySparkline();
+
+  // Learning tab
+  renderRuleWeights();
+  renderMistakes();
   renderWeeklyReviews();
 }
 
@@ -32,19 +79,58 @@ function dedupeLatestPerSector(predictions) {
   return out;
 }
 
-function renderSectorCards() {
-  const el = document.getElementById("sector-grid");
-  const preds = dataCache.latestPredictions;
-  if (!preds.length) { el.innerHTML = `<p class="empty-note">No signals logged yet — the daily job runs automatically on market days, or trigger it manually from the repo's Actions tab.</p>`; return; }
-  el.innerHTML = preds.map(p => `
-    <div class="sector-card ${p.direction}">
-      <div class="sector-card-top">
-        <span class="sector-name">${p.sector.replace(/_/g, " ")}</span>
-        <span class="sector-ticker">${p.ticker}</span>
-      </div>
-      <div class="sector-direction ${p.direction}">${p.direction} · ${p.possibility_indicator}%</div>
-      <div class="possibility-bar-track"><div class="possibility-bar-fill" style="width:${p.possibility_indicator}%"></div></div>
-      <div class="sector-reason">${(p.reasons || []).slice(0, 2).join(" · ")}</div>
+function renderBrief() {
+  const el = document.getElementById("eli5-brief");
+  if (!dataCache.dailyBrief) {
+    el.innerHTML = `<p class="empty-note">Graha hasn't written today's brief yet — check back after the daily job runs.</p>`;
+    return;
+  }
+  el.textContent = dataCache.dailyBrief.brief_text;
+}
+
+function renderMovers() {
+  const rows = dataCache.marketSnapshot;
+  const gainersEl = document.getElementById("gainers-list");
+  const losersEl = document.getElementById("losers-list");
+  if (!rows.length) {
+    gainersEl.innerHTML = `<p class="empty-note">No market watch data yet.</p>`;
+    losersEl.innerHTML = `<p class="empty-note">No market watch data yet.</p>`;
+    return;
+  }
+  const latestDate = rows[0].date;
+  const today = rows.filter(r => r.date === latestDate && r.percent_change != null);
+  const gainers = [...today].sort((a, b) => b.percent_change - a.percent_change).slice(0, 5);
+  const losers = [...today].sort((a, b) => a.percent_change - b.percent_change).slice(0, 5);
+
+  const rowHtml = r => `
+    <div class="mover-row">
+      <span class="mover-ticker">${r.ticker}</span>
+      <span class="holding-meta">${(r.sector || "").replace(/_/g, " ")}</span>
+      <span class="mover-pct ${r.percent_change >= 0 ? "bullish" : "bearish"}">${r.percent_change >= 0 ? "+" : ""}${r.percent_change}%</span>
+      <span class="holding-meta">$${r.price}</span>
+      <button class="ghost" data-add-ticker="${r.ticker}" data-add-price="${r.price}">+ portfolio</button>
+    </div>`;
+
+  gainersEl.innerHTML = gainers.length ? gainers.map(rowHtml).join("") : `<p class="empty-note">No gainers today.</p>`;
+  losersEl.innerHTML = losers.length ? losers.map(rowHtml).join("") : `<p class="empty-note">No losers today.</p>`;
+
+  document.querySelectorAll("[data-add-ticker]").forEach(btn => {
+    btn.addEventListener("click", async () => {
+      await SB.insert("portfolio", { ticker: btn.dataset.addTicker, buy_price: parseFloat(btn.dataset.addPrice), quantity: 1, exchange: "NYSE" });
+      await loadAll();
+    });
+  });
+}
+
+function renderPicksPreview() {
+  const el = document.getElementById("picks-preview");
+  const rows = dataCache.suggestedStocks.slice(0, 4);
+  if (!rows.length) { el.innerHTML = `<p class="empty-note">No active picks right now.</p>`; return; }
+  el.innerHTML = rows.map(r => `
+    <div class="pick-preview-row">
+      <span class="mover-ticker">${r.ticker}</span>
+      <span class="sector-direction ${r.direction}">${r.direction}</span>
+      <span class="holding-meta">${(r.sector || "").replace(/_/g, " ")}</span>
     </div>
   `).join("");
 }
@@ -60,33 +146,6 @@ function renderPortfolio() {
         <div class="holding-meta">bought $${r.buy_price} · ${r.buy_date} · ${r.exchange}</div>
       </div>
       <button class="ghost" onclick="removeHolding(${r.id})">remove</button>
-    </div>
-  `).join("");
-}
-
-function renderPaperTrading() {
-  const cashEl = document.getElementById("paper-cash");
-  const listEl = document.getElementById("paper-trades");
-  cashEl.textContent = dataCache.paperAccount ? `$${Number(dataCache.paperAccount.cash).toLocaleString(undefined, {maximumFractionDigits:2})}` : "—";
-  const trades = dataCache.recentTrades;
-  if (!trades.length) { listEl.innerHTML = `<p class="empty-note">No trades yet — the bot only enters when a sector's possibility indicator clears its threshold.</p>`; return; }
-  listEl.innerHTML = trades.map(t => `
-    <div class="trade-row">
-      <span class="trade-action ${t.action}">${t.action}</span> ${t.quantity} ${t.ticker} @ $${t.price} <span class="holding-meta">${t.trade_date}</span>
-      ${t.pnl != null ? `<span class="holding-meta"> · P&L $${t.pnl} (${t.pnl_pct}%)</span>` : ""}
-      <div class="trade-reasoning">${t.reasoning}</div>
-    </div>
-  `).join("");
-}
-
-function renderWeeklyReviews() {
-  const el = document.getElementById("review-strip");
-  const reviews = dataCache.weeklyReviews;
-  if (!reviews.length) { el.innerHTML = `<p class="empty-note">No weekly review yet — runs automatically every Sunday.</p>`; return; }
-  el.innerHTML = reviews.map(r => `
-    <div class="review-item">
-      <div class="review-summary">${r.summary}</div>
-      ${(r.lessons || []).slice(0, 3).map(l => `<div class="review-lesson">${l.reason_it_missed || JSON.stringify(l)}</div>`).join("")}
     </div>
   `).join("");
 }
@@ -128,7 +187,7 @@ function appendChatMsg(role, text) {
   const log = document.getElementById("chat-log");
   const div = document.createElement("div");
   div.className = `chat-msg ${role}`;
-  div.innerHTML = `<span class="role">${role === "user" ? "you" : "agent"}</span>${text.replace(/\n/g, "<br>")}`;
+  div.innerHTML = `<span class="role">${role === "user" ? "you" : "graha"}</span>${text.replace(/\n/g, "<br>")}`;
   log.appendChild(div);
   log.scrollTop = log.scrollHeight;
 }
