@@ -25,7 +25,10 @@ SECTOR_TICKERS = {
     "Communication_Media": "XLC",
     "Gold": "GLD",
     "Silver": "SLV",
-    "Canada_Broad": "XIU.TO",   # iShares S&P/TSX 60, Toronto
+    "Canada_Broad": "EWC",      # iShares MSCI Canada ETF, NYSE-Arca (Twelve
+                                # Data's free tier blocks TSX-listed symbols
+                                # like XIU.TO -- confirmed via live 403 --
+                                # EWC gives the same Canada exposure on NYSE)
     "US_Broad": "SPY",
 }
 

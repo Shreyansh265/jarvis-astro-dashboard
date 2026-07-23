@@ -13,6 +13,13 @@ API_KEY = os.environ.get("TWELVE_DATA_API_KEY")
 _last_call = 0
 _MIN_INTERVAL = 8.0  # seconds, to stay under 8 req/min free tier
 
+# Twelve Data charges credits per symbol even inside one HTTP call, and a
+# single daily run can legitimately ask for the same ticker's quote more
+# than once (e.g. a sector ETF gets priced for its prediction stamp, then
+# again when checking an open paper-trade position in that same sector).
+# Cache per-process so repeat calls in one run are free instead of re-billed.
+_quote_cache = {}
+
 
 def _rate_limit():
     global _last_call
@@ -30,7 +37,9 @@ def _normalize_symbol(ticker: str) -> str:
 
 
 def get_quote(ticker: str) -> dict:
-    """Latest price + daily change for a ticker."""
+    """Latest price + daily change for a ticker. Cached per-process."""
+    if ticker in _quote_cache:
+        return _quote_cache[ticker]
     if not API_KEY:
         raise RuntimeError("TWELVE_DATA_API_KEY not set in environment")
     _rate_limit()
@@ -39,13 +48,15 @@ def get_quote(ticker: str) -> dict:
     data = resp.json()
     if data.get("status") == "error" or "close" not in data:
         raise RuntimeError(f"Twelve Data error for {ticker}: {data}")
-    return {
+    result = {
         "ticker": ticker,
         "price": float(data["close"]),
         "change": float(data.get("change", 0)),
         "percent_change": float(data.get("percent_change", 0)),
         "timestamp": data.get("datetime"),
     }
+    _quote_cache[ticker] = result
+    return result
 
 
 def get_time_series(ticker: str, interval: str = "1day", outputsize: int = 500) -> list:

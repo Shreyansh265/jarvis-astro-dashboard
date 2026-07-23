@@ -126,3 +126,105 @@ create policy "public read weekly_reviews" on weekly_reviews for select using (t
 
 create policy "public read chat_log" on chat_log for select using (true);
 create policy "public write chat_log" on chat_log for insert with check (true);
+
+-- ===================================================================
+-- Graha epic additions (daily learning loop, stock-level picks, tabs)
+-- Safe to re-run: every statement below is idempotent.
+-- ===================================================================
+
+-- Fix: predictions had no uniqueness guarantee, so any same-day re-run of
+-- main_daily.py (e.g. a retry, or a manual + scheduled run landing on the
+-- same UTC day) silently duplicated rows instead of updating them. De-dup
+-- existing data BEFORE adding the index, or index creation fails on the
+-- duplicate rows already present. Keep the reviewed copy if one exists
+-- (don't throw away real review history), otherwise the newest row.
+delete from predictions a using predictions b
+where a.date = b.date and a.sector = b.sector
+  and (a.reviewed, a.id) < (b.reviewed, b.id);
+
+create unique index if not exists predictions_date_sector_uidx
+  on predictions(date, sector);
+
+-- Astro Stocks: individual stock picks within bullish/bearish sectors,
+-- tracked from suggestion date until the user removes them from view.
+-- Soft-delete only (is_active flag) -- daily_review.py / weekly_review.py
+-- need full history to learn from even after a user stops watching a pick.
+create table if not exists suggested_stocks (
+    id bigint generated always as identity primary key,
+    date_suggested date not null default current_date,
+    sector text not null,
+    ticker text not null,
+    direction text not null,
+    reasoning text not null,
+    price_at_suggestion numeric,
+    is_active boolean not null default true,
+    removed_at timestamptz,
+    created_at timestamptz not null default now()
+);
+alter table suggested_stocks enable row level security;
+create policy "public read suggested_stocks" on suggested_stocks for select using (true);
+-- No anon insert/update policy on purpose -- inserts are service-role only
+-- (engine), and the only mutation the browser can make is via the narrow
+-- RPC below, which flips exactly one flag and nothing else. A blanket
+-- "anon can update" policy (like portfolio's) would let the browser corrupt
+-- price_at_suggestion/reasoning, which the learning loop depends on.
+create or replace function remove_suggested_stock(p_id bigint)
+returns void
+language sql
+security definer
+set search_path = public
+as $$
+  update suggested_stocks set is_active = false, removed_at = now() where id = p_id;
+$$;
+grant execute on function remove_suggested_stock(bigint) to anon;
+
+-- Curated-watchlist daily price scan: powers "top gainers/losers" (Twelve
+-- Data's free tier has no market-wide movers endpoint) and the "current
+-- price" column on Astro Stocks. One row per ticker per day.
+create table if not exists market_snapshot (
+    id bigint generated always as identity primary key,
+    date date not null default current_date,
+    ticker text not null,
+    sector text,
+    price numeric not null,
+    percent_change numeric,
+    created_at timestamptz not null default now(),
+    unique (date, ticker)
+);
+alter table market_snapshot enable row level security;
+create policy "public read market_snapshot" on market_snapshot for select using (true);
+
+-- Daily mark-to-market equity snapshot. paper_account.cash alone was never
+-- a true equity figure once open positions exist -- especially now that
+-- short positions exist, where the open liability isn't cash at all.
+-- Sign convention (see paper_trader.py for the worked example): an open
+-- LONG contributes +(qty*current_price) to positions_value; an open SHORT
+-- contributes -(qty*current_price) (a liability, not an asset), because
+-- opening a short already credited the sale proceeds to cash.
+create table if not exists equity_history (
+    id bigint generated always as identity primary key,
+    date date not null unique,
+    cash numeric not null,
+    positions_value numeric not null,
+    total_equity numeric not null,
+    created_at timestamptz not null default now()
+);
+alter table equity_history enable row level security;
+create policy "public read equity_history" on equity_history for select using (true);
+
+-- ELI5 daily brief, generated from our own signals + price data only --
+-- no third-party news source, no LLM.
+create table if not exists daily_briefs (
+    id bigint generated always as identity primary key,
+    date date not null unique,
+    brief_text text not null,
+    created_at timestamptz not null default now()
+);
+alter table daily_briefs enable row level security;
+create policy "public read daily_briefs" on daily_briefs for select using (true);
+
+-- Long vs. short leg of a paper_trades position. `action` keeps meaning
+-- open/close (BUY/SELL for a long, SHORT/COVER for the new short leg);
+-- position_type is the independent long/short axis -- keeping these two
+-- separate avoids overloading `action` with four ad-hoc string values.
+alter table paper_trades add column if not exists position_type text not null default 'long' check (position_type in ('long','short'));

@@ -31,6 +31,7 @@ def run_weekly_review():
 
     weight_deltas = {}
     correct_count = 0
+    evaluated_count = 0
     lessons = []
 
     for pred in predictions:
@@ -43,7 +44,10 @@ def run_weekly_review():
 
         relevant = [b for b in bars if b["date"][:10] >= pred["date"]]
         if len(relevant) < 2:
+            # Not enough forward price history yet to judge this one (e.g. it
+            # was made too recently) -- skip without counting it as a miss.
             continue
+        evaluated_count += 1
         start_price = pred.get("price_at_prediction") or relevant[0]["close"]
         end_price = relevant[-1]["close"]
         actual_pct = round((end_price - start_price) / start_price * 100, 2)
@@ -88,7 +92,18 @@ def run_weekly_review():
             "incorrect_count": existing["incorrect_count"] + sum(1 for r in results if r == -1),
         }, on_conflict="planet")
 
-    total = len(predictions)
+    if evaluated_count == 0:
+        # Every selected prediction was too recent to have forward price
+        # history yet (or its price fetch failed) -- report that honestly
+        # instead of fabricating a 0%-accuracy result from zero real checks.
+        return {
+            "summary": (f"{len(predictions)} predictions pending from {week_start} to {week_end}, "
+                        f"but none are old enough to verify against real price moves yet. "
+                        f"Check back after they've had at least a day to play out."),
+            "total": 0,
+        }
+
+    total = evaluated_count
     accuracy = round(correct_count / total * 100, 1) if total else 0
     summary = (f"Reviewed {total} predictions from {week_start} to {week_end}. "
                f"{correct_count} correct ({accuracy}% accuracy). "
