@@ -112,19 +112,34 @@ alter table paper_trades enable row level security;
 alter table weekly_reviews enable row level security;
 alter table chat_log enable row level security;
 
+-- Postgres has no "create policy if not exists", so every policy below is
+-- dropped-then-recreated -- makes the WHOLE file safe to paste and re-run
+-- from scratch at any time, not just the tables added after your first run.
+drop policy if exists "public read portfolio" on portfolio;
 create policy "public read portfolio" on portfolio for select using (true);
+drop policy if exists "public write portfolio" on portfolio;
 create policy "public write portfolio" on portfolio for insert with check (true);
+drop policy if exists "public update portfolio" on portfolio;
 create policy "public update portfolio" on portfolio for update using (true);
+drop policy if exists "public delete portfolio" on portfolio;
 create policy "public delete portfolio" on portfolio for delete using (true);
 
+drop policy if exists "public read planetary_log" on planetary_log;
 create policy "public read planetary_log" on planetary_log for select using (true);
+drop policy if exists "public read predictions" on predictions;
 create policy "public read predictions" on predictions for select using (true);
+drop policy if exists "public read rule_weights" on rule_weights;
 create policy "public read rule_weights" on rule_weights for select using (true);
+drop policy if exists "public read paper_account" on paper_account;
 create policy "public read paper_account" on paper_account for select using (true);
+drop policy if exists "public read paper_trades" on paper_trades;
 create policy "public read paper_trades" on paper_trades for select using (true);
+drop policy if exists "public read weekly_reviews" on weekly_reviews;
 create policy "public read weekly_reviews" on weekly_reviews for select using (true);
 
+drop policy if exists "public read chat_log" on chat_log;
 create policy "public read chat_log" on chat_log for select using (true);
+drop policy if exists "public write chat_log" on chat_log;
 create policy "public write chat_log" on chat_log for insert with check (true);
 
 -- ===================================================================
@@ -162,6 +177,7 @@ create table if not exists suggested_stocks (
     created_at timestamptz not null default now()
 );
 alter table suggested_stocks enable row level security;
+drop policy if exists "public read suggested_stocks" on suggested_stocks;
 create policy "public read suggested_stocks" on suggested_stocks for select using (true);
 -- No anon insert/update policy on purpose -- inserts are service-role only
 -- (engine), and the only mutation the browser can make is via the narrow
@@ -192,6 +208,7 @@ create table if not exists market_snapshot (
     unique (date, ticker)
 );
 alter table market_snapshot enable row level security;
+drop policy if exists "public read market_snapshot" on market_snapshot;
 create policy "public read market_snapshot" on market_snapshot for select using (true);
 
 -- Daily mark-to-market equity snapshot. paper_account.cash alone was never
@@ -210,6 +227,7 @@ create table if not exists equity_history (
     created_at timestamptz not null default now()
 );
 alter table equity_history enable row level security;
+drop policy if exists "public read equity_history" on equity_history;
 create policy "public read equity_history" on equity_history for select using (true);
 
 -- ELI5 daily brief, generated from our own signals + price data only --
@@ -221,6 +239,7 @@ create table if not exists daily_briefs (
     created_at timestamptz not null default now()
 );
 alter table daily_briefs enable row level security;
+drop policy if exists "public read daily_briefs" on daily_briefs;
 create policy "public read daily_briefs" on daily_briefs for select using (true);
 
 -- Long vs. short leg of a paper_trades position. `action` keeps meaning
