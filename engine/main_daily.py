@@ -1,9 +1,16 @@
 """
 Runs once per day via GitHub Actions (see .github/workflows/daily.yml):
-  1. Compute today's planetary positions + sector signals
-  2. Log the planetary snapshot and every prediction to Supabase
-  3. Fetch current prices for predicted sectors and stamp them on the prediction
-  4. Run the paper trading bot against today's signals
+  1. Review yesterday's (or any still-unreviewed) predictions against
+     today's fresh prices, and let that nudge rule_weights BEFORE today's
+     signals are generated -- otherwise "don't repeat the mistake" would
+     always run a day behind.
+  2. Re-read rule_weights (now post-adjustment) and compute today's
+     planetary positions + sector signals.
+  3. Log the planetary snapshot and every prediction to Supabase.
+  4. Suggest individual stocks within strongly-signaled sectors (Astro
+     Stocks tab) and scan the curated watchlist for gainers/losers.
+  5. Generate today's plain-language brief.
+  6. Run the paper trading bot against today's signals.
 """
 from datetime import date
 import json
@@ -11,20 +18,29 @@ import signals as sig_mod
 import supabase_client as db
 import data_fetch
 from rulerships import SECTOR_TICKERS
+import daily_review
+import stock_picks
+import market_watch
+import eli5
 import paper_trader
 
 
 def main():
-    out = sig_mod.generate_signals()
-    today = date.today().isoformat()
+    review_result = daily_review.run_daily_review()
+    if review_result["reviewed"]:
+        print(f"Daily review: scored {review_result['reviewed']} prior prediction(s).")
+        for lesson in review_result["lessons"]:
+            print(" -", lesson["reason_it_missed"])
 
-    # Pull learned weights if we have any yet
+    # Read rule_weights AFTER daily_review's adjustments above, not a copy
+    # from before it ran -- otherwise today's signals would use yesterday's
+    # weights and the learning loop gets a spurious one-day lag.
     weights_rows = db.select("rule_weights")
     rule_weights = {w["planet"]: w["weight"] for w in weights_rows}
-    if rule_weights:
-        out = sig_mod.generate_signals(rule_weights=rule_weights)
+    out = sig_mod.generate_signals(rule_weights=rule_weights) if rule_weights else sig_mod.generate_signals()
 
-    # Log planetary snapshot (idempotent per day)
+    today = date.today().isoformat()
+
     try:
         db.upsert("planetary_log", {
             "date": today,
@@ -34,7 +50,6 @@ def main():
     except Exception as e:
         print(f"planetary_log upsert warning: {e}")
 
-    # Log each sector prediction with a live price stamp
     predictions_logged = 0
     for sector, sig in out["sectors"].items():
         ticker = SECTOR_TICKERS.get(sector)
@@ -47,18 +62,27 @@ def main():
             print(f"price fetch failed for {ticker}: {e}")
             price = None
 
-        db.insert("predictions", {
+        db.upsert("predictions", {
             "date": today, "sector": sector, "ticker": ticker,
             "direction": sig["direction"],
             "possibility_indicator": sig["possibility_indicator"],
             "reasons": sig["reasons"], "contributing_planets": sig["contributing_planets"],
             "price_at_prediction": price,
-        })
+        }, on_conflict="date,sector")
         predictions_logged += 1
 
     print(f"Logged {predictions_logged} predictions for {today}")
 
-    # Run paper trading bot
+    suggested = stock_picks.run_stock_picks(out["sectors"])
+    if suggested:
+        print(f"Suggested {len(suggested)} new stock pick(s): {', '.join(suggested)}")
+
+    snapshot_rows = market_watch.run_market_watch()
+    print(f"Market watch: priced {len(snapshot_rows)} watchlist ticker(s)")
+
+    brief = eli5.run_eli5(out["sectors"], snapshot_rows)
+    print(f"Today's brief: {brief}")
+
     trade_log = paper_trader.run_daily_paper_trading(out["sectors"])
     for line in trade_log:
         print(line)

@@ -59,6 +59,31 @@ PLANET_SECTOR_RULES = {
     "Ketu":    {"sectors": ["Healthcare", "Gold"], "weight": 0.4},
 }
 
+# Individual stock picks within each sector, for the Astro Stocks tab and
+# the market-watch gainers/losers scan. Curated, liquid, well-known names --
+# only for sectors that actually get a signal (i.e. appear in
+# PLANET_SECTOR_RULES above). Silver has no planetary rule and never
+# signals, and US_Broad (the whole market) has no single meaningful stock
+# pick, so both are intentionally left out here.
+SECTOR_TOP_STOCKS = {
+    "Energy": ["XOM", "CVX", "COP"],
+    "Financials": ["JPM", "BAC", "GS"],
+    "Technology": ["AAPL", "MSFT", "NVDA"],
+    "Healthcare": ["UNH", "JNJ", "LLY"],
+    "Industrials": ["CAT", "BA", "HON"],
+    "Materials_Mining": ["LIN", "FCX", "NEM"],
+    "Consumer_Discretionary": ["AMZN", "HD", "MCD"],
+    "Consumer_Staples": ["PG", "KO", "PEP"],
+    "Utilities": ["NEE", "DUK", "SO"],
+    "Real_Estate": ["AMT", "PLD", "EQIX"],
+    "Communication_Media": ["GOOGL", "META", "NFLX"],
+    "Gold": ["AEM", "FNV", "AU"],   # NOT "GOLD" -- on Twelve Data's free
+                                    # tier that symbol resolves to an
+                                    # unrelated micro-cap ("Gold.com, Inc."),
+                                    # not Barrick; confirmed live.
+    "Canada_Broad": ["RY", "TD", "SHOP"],
+}
+
 # Sign a planet is "exalted" in (traditionally strong/bullish for its sectors)
 # and "debilitated" in (traditionally weak/bearish for its sectors).
 EXALTATION = {
