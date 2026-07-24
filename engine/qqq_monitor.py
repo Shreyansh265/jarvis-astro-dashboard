@@ -196,9 +196,22 @@ def _run_tick(prior_bar, last_signal):
 
 
 def run_session():
+    # Bug found live: outputsize=2 with ASC order and blindly taking index
+    # [0] assumed that's always "yesterday" -- it isn't. If today's own
+    # daily bar already exists (job started mid-session), index [0] is
+    # actually 2 days back, not 1, giving a pivot computed from the wrong
+    # day entirely (confirmed live: a $706 pivot while QQQ traded at
+    # $692). Explicitly exclude any bar dated "today" and take the most
+    # recent of what's left, regardless of when in the session this starts.
     try:
-        prior = data_fetch.get_time_series(TICKER, interval="1day", outputsize=2)
-        prior_bar = prior[0]  # ASC order -- the older of the last 2 daily bars is "prior day" even if today's own daily bar already exists intraday
+        intraday_probe = data_fetch.get_time_series(TICKER, interval="5min", outputsize=1)
+        today_str = intraday_probe[-1]["date"][:10] if intraday_probe else None
+        daily_bars = data_fetch.get_time_series(TICKER, interval="1day", outputsize=5)
+        prior_candidates = [b for b in daily_bars if today_str is None or b["date"][:10] != today_str]
+        if not prior_candidates:
+            print("qqq_monitor: no prior-day bar available, aborting session.")
+            return
+        prior_bar = prior_candidates[-1]  # most recent prior session, ASC order
     except Exception as e:
         print(f"qqq_monitor: could not fetch prior day bar, aborting session: {e}")
         return
