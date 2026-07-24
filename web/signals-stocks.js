@@ -5,7 +5,7 @@ function renderSectorCards() {
   const el = document.getElementById("sector-grid");
   const preds = dataCache.latestPredictions;
   if (!preds.length) { el.innerHTML = `<p class="empty-note">No signals logged yet — the daily job runs automatically on market days, or trigger it manually from the repo's Actions tab.</p>`; return; }
-  el.innerHTML = preds.map(p => `
+  el.innerHTML = preds.map((p, i) => `
     <div class="sector-card ${p.direction}">
       <div class="sector-card-top">
         <span class="sector-name">${p.sector.replace(/_/g, " ")}</span>
@@ -14,8 +14,20 @@ function renderSectorCards() {
       <div class="sector-direction ${p.direction}">${p.direction} · ${p.possibility_indicator}%</div>
       <div class="possibility-bar-track"><div class="possibility-bar-fill" style="width:${p.possibility_indicator}%"></div></div>
       <div class="sector-reason">${(p.reasons || []).slice(0, 2).join(" · ")}</div>
+      ${p.long_term_note ? `
+        <button class="ghost read-more-btn" data-read-more="${i}">read more — the long-term case</button>
+        <div class="long-term-note" id="long-term-note-${i}" hidden>${p.long_term_note}</div>
+      ` : ""}
     </div>
   `).join("");
+
+  el.querySelectorAll("[data-read-more]").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const note = document.getElementById(`long-term-note-${btn.dataset.readMore}`);
+      note.hidden = !note.hidden;
+      btn.textContent = note.hidden ? "read more — the long-term case" : "show less";
+    });
+  });
 }
 
 function renderAspects() {

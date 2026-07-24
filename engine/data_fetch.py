@@ -59,16 +59,28 @@ def get_quote(ticker: str) -> dict:
     return result
 
 
-def get_time_series(ticker: str, interval: str = "1day", outputsize: int = 500) -> list:
-    """Historical OHLC bars, most recent last."""
+def get_time_series(ticker: str, interval: str = "1day", outputsize: int = 500,
+                     start_date: str = None, end_date: str = None) -> list:
+    """
+    Historical OHLC bars, most recent last. Pass start_date/end_date
+    ("YYYY-MM-DD") to fetch a specific historical window directly instead
+    of the most recent `outputsize` bars -- needed for e.g. a decades-old
+    historical analog, where pulling that far back via outputsize alone
+    would need thousands of bars in one call. A window before the ticker's
+    inception raises cleanly (Twelve Data returns a 400, not empty data),
+    which callers should catch and treat as "can't verify this one."
+    """
     if not API_KEY:
         raise RuntimeError("TWELVE_DATA_API_KEY not set in environment")
     _rate_limit()
     symbol = _normalize_symbol(ticker)
-    resp = requests.get(f"{BASE_URL}/time_series", params={
-        "symbol": symbol, "interval": interval, "outputsize": outputsize,
-        "apikey": API_KEY, "order": "ASC",
-    }, timeout=20)
+    params = {"symbol": symbol, "interval": interval, "apikey": API_KEY, "order": "ASC"}
+    if start_date:
+        params["start_date"] = start_date
+        params["end_date"] = end_date or start_date
+    else:
+        params["outputsize"] = outputsize
+    resp = requests.get(f"{BASE_URL}/time_series", params=params, timeout=20)
     data = resp.json()
     if data.get("status") == "error" or "values" not in data:
         raise RuntimeError(f"Twelve Data error for {ticker}: {data}")

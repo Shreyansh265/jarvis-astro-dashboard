@@ -6,13 +6,15 @@ Runs once per day via GitHub Actions (see .github/workflows/daily.yml):
      always run a day behind.
   2. Re-read rule_weights (now post-adjustment) and compute today's
      planetary positions + sector signals.
-  3. Log the planetary snapshot and every prediction to Supabase.
+  3. Log the planetary snapshot and every prediction to Supabase, including
+     a long-term explanation (with a real historical planetary analog when
+     one can be found -- see historical_analog.py) for each non-neutral sector.
   4. Suggest individual stocks within strongly-signaled sectors (Astro
      Stocks tab) and scan the curated watchlist for gainers/losers.
   5. Generate today's plain-language brief.
   6. Run the paper trading bot against today's signals.
 """
-from datetime import date
+from datetime import date, datetime, timezone
 import json
 import signals as sig_mod
 import supabase_client as db
@@ -23,6 +25,7 @@ import stock_picks
 import market_watch
 import eli5
 import paper_trader
+import historical_analog
 
 
 def main():
@@ -37,7 +40,8 @@ def main():
     # weights and the learning loop gets a spurious one-day lag.
     weights_rows = db.select("rule_weights")
     rule_weights = {w["planet"]: w["weight"] for w in weights_rows}
-    out = sig_mod.generate_signals(rule_weights=rule_weights) if rule_weights else sig_mod.generate_signals()
+    now = datetime.now(timezone.utc)
+    out = sig_mod.generate_signals(date=now, rule_weights=rule_weights) if rule_weights else sig_mod.generate_signals(date=now)
 
     today = date.today().isoformat()
 
@@ -62,12 +66,21 @@ def main():
             print(f"price fetch failed for {ticker}: {e}")
             price = None
 
+        try:
+            long_term_note = historical_analog.build_long_term_note(
+                sector, ticker, sig["direction"], sig["reasons"],
+                sig["contributing_planets"], out["positions"], now,
+            )
+        except Exception as e:
+            print(f"historical_analog failed for {sector}: {e}")
+            long_term_note = None
+
         db.upsert("predictions", {
             "date": today, "sector": sector, "ticker": ticker,
             "direction": sig["direction"],
             "possibility_indicator": sig["possibility_indicator"],
             "reasons": sig["reasons"], "contributing_planets": sig["contributing_planets"],
-            "price_at_prediction": price,
+            "price_at_prediction": price, "long_term_note": long_term_note,
         }, on_conflict="date,sector")
         predictions_logged += 1
 

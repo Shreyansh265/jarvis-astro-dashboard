@@ -144,6 +144,8 @@ header.masthead {
 .possibility-bar-track { height: 4px; background: var(--hairline); border-radius: 2px; margin: 8px 0 6px; overflow: hidden; }
 .possibility-bar-fill { height: 100%; background: linear-gradient(90deg, var(--brass), var(--cyan)); }
 .sector-reason { font-size: 12px; color: var(--parchment-dim); line-height: 1.5; margin-top: 4px; }
+.read-more-btn { margin-top: 10px; width: 100%; font-size: 11px; padding: 6px 8px; }
+.long-term-note { margin-top: 10px; font-size: 12.5px; line-height: 1.6; color: var(--parchment); border-top: 1px solid var(--hairline); padding-top: 10px; }
 
 /* ---------- Aspects ---------- */
 .aspect-row {
