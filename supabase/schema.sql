@@ -247,3 +247,60 @@ create policy "public read daily_briefs" on daily_briefs for select using (true)
 -- position_type is the independent long/short axis -- keeping these two
 -- separate avoids overloading `action` with four ad-hoc string values.
 alter table paper_trades add column if not exists position_type text not null default 'long' check (position_type in ('long','short'));
+
+-- ===================================================================
+-- Epic 2 additions (Graha 2.0 ledger, Astro Signals, real Portfolio
+-- journal, historical analogs, QQQ intraday bot). Also idempotent.
+-- ===================================================================
+
+-- Portfolio becomes a real buy/sell journal, not just "current holdings
+-- that vanish on delete." Selling is a PATCH to these three columns
+-- (status/sell_price/sell_date), not a DELETE -- history is kept.
+-- Limitation, stated plainly: this is one-row-per-lifecycle, so a partial
+-- sell (bought 10, sold 5) isn't representable -- split the holding into
+-- two rows first if that ever comes up. A true fix would be an append-only
+-- ledger like paper_trades, which is a bigger change than this pass.
+alter table portfolio add column if not exists status text not null default 'open' check (status in ('open','closed'));
+alter table portfolio add column if not exists sell_price numeric;
+alter table portfolio add column if not exists sell_date date;
+
+-- 4-5 sentences of prose for "why is this a good long-term buy," including
+-- a real historical planetary analog when one's found (historical_analog.py).
+-- Kept separate from `reasons`, which is short bullet fragments, not prose.
+alter table predictions add column if not exists long_term_note text;
+
+-- QQQ intraday bot: one signal per tick of qqq_monitor.py's session loop.
+create table if not exists qqq_signals (
+    id bigint generated always as identity primary key,
+    ts timestamptz not null default now(),
+    price numeric not null,
+    vwap numeric, pivot numeric, r1 numeric, r2 numeric, s1 numeric, s2 numeric,
+    ema9 numeric, ema20 numeric,
+    opening_range_high numeric, opening_range_low numeric,
+    astro_bias text, astro_possibility_indicator numeric,
+    signal text not null check (signal in ('BUY', 'SHORT', 'HOLD')),
+    reasoning text,
+    outcome text not null default 'pending' check (outcome in ('pending', 'correct', 'incorrect')),
+    outcome_checked_at timestamptz,
+    created_at timestamptz not null default now()
+);
+alter table qqq_signals enable row level security;
+drop policy if exists "public read qqq_signals" on qqq_signals;
+create policy "public read qqq_signals" on qqq_signals for select using (true);
+
+-- How much the astro-bias component should matter vs. pure technical
+-- levels for QQQ specifically -- related to but distinct from
+-- rule_weights, which tunes the Technology sector's own daily signal.
+create table if not exists qqq_strategy_weights (
+    id bigint generated always as identity primary key,
+    key text unique not null,
+    weight numeric not null default 1.0,
+    correct_count integer not null default 0,
+    incorrect_count integer not null default 0,
+    updated_at timestamptz not null default now()
+);
+alter table qqq_strategy_weights enable row level security;
+drop policy if exists "public read qqq_strategy_weights" on qqq_strategy_weights;
+create policy "public read qqq_strategy_weights" on qqq_strategy_weights for select using (true);
+insert into qqq_strategy_weights (key, weight) select 'astro_component', 1.0
+  where not exists (select 1 from qqq_strategy_weights where key = 'astro_component');
