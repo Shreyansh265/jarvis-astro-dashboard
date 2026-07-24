@@ -31,42 +31,68 @@ function renderAspects() {
   `).join("");
 }
 
+// Note: this join only works because stock_picks.py only ever suggests
+// tickers drawn from rulerships.SECTOR_TOP_STOCKS, and market_watch.py
+// prices exactly that same curated list every day -- if stock_picks.py
+// ever suggests outside that list, this lookup will silently come up empty.
+function _snapshotAtOrBefore(ticker, cutoffDateStr) {
+  // dataCache.marketSnapshot is ordered date.desc, so the first row for
+  // this ticker with date <= cutoff is the closest-at-or-before match.
+  // cutoffDateStr comparison is by UTC calendar date (not exact ET) --
+  // an approximation, but it never looks ahead of the cutoff, which is
+  // the property that actually matters here.
+  return dataCache.marketSnapshot.find(r => r.ticker === ticker && r.date <= cutoffDateStr) || null;
+}
+
+function _latestSnapshot(ticker) {
+  return dataCache.marketSnapshot.find(r => r.ticker === ticker) || null; // date.desc order -> first = latest
+}
+
 function renderAstroStocks() {
-  const el = document.getElementById("stocks-list");
+  const tbody = document.getElementById("stocks-table-body");
   const rows = dataCache.suggestedStocks;
-  if (!rows.length) { el.innerHTML = `<p class="empty-note">No active stock picks right now — Graha suggests individual stocks once a sector clears a confidence bar.</p>`; return; }
+  if (!rows.length) {
+    tbody.innerHTML = `<tr><td colspan="10" class="empty-note">No stock picks yet — Graha suggests individual stocks once a sector clears a confidence bar.</td></tr>`;
+    return;
+  }
 
-  const latestPriceByTicker = {};
-  dataCache.marketSnapshot.forEach(r => {
-    const existing = latestPriceByTicker[r.ticker];
-    if (!existing || r.date > existing.date) latestPriceByTicker[r.ticker] = r;
-  });
-
-  el.innerHTML = rows.map(r => {
-    const current = latestPriceByTicker[r.ticker];
-    const currentPrice = current ? current.price : null;
-    const pctSince = (currentPrice != null && r.price_at_suggestion)
-      ? Math.round(((currentPrice - r.price_at_suggestion) / r.price_at_suggestion) * 10000) / 100
+  tbody.innerHTML = rows.map(r => {
+    const isActive = r.is_active;
+    const priceRow = isActive ? _latestSnapshot(r.ticker) : _snapshotAtOrBefore(r.ticker, (r.removed_at || "").slice(0, 10));
+    const comparePrice = priceRow ? Number(priceRow.price) : null;
+    const pctSince = (comparePrice != null && r.price_at_suggestion)
+      ? Math.round(((comparePrice - r.price_at_suggestion) / r.price_at_suggestion) * 10000) / 100
       : null;
+    const suggestedAt = new Date(r.created_at);
     return `
-    <div class="stock-card ${r.direction}">
-      <div class="sector-card-top">
-        <span class="sector-name">${r.ticker}</span>
-        <button class="ghost" data-remove-stock="${r.id}">remove</button>
-      </div>
-      <div class="sector-ticker">${(r.sector || "").replace(/_/g, " ")} · suggested ${r.date_suggested}</div>
-      <div class="sector-direction ${r.direction}">${r.direction}</div>
-      <div class="holding-meta">at suggestion: ${r.price_at_suggestion != null ? "$" + r.price_at_suggestion : "—"}
-        · now: ${currentPrice != null ? "$" + currentPrice : "—"}
-        ${pctSince != null ? `<span class="${pctSince >= 0 ? "bullish" : "bearish"}"> (${pctSince >= 0 ? "+" : ""}${pctSince}%)</span>` : ""}
-      </div>
-      <div class="sector-reason">${r.reasoning}</div>
-    </div>`;
+    <tr class="${r.direction === "bullish" ? "row-bullish" : (r.direction === "bearish" ? "row-bearish" : "")}">
+      <td>${r.date_suggested}</td>
+      <td>${suggestedAt.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" })}</td>
+      <td>${r.ticker}</td>
+      <td>${(r.sector || "").replace(/_/g, " ")}</td>
+      <td class="${r.direction === "bullish" ? "bullish" : (r.direction === "bearish" ? "bearish" : "")}">${r.direction}</td>
+      <td>${r.price_at_suggestion != null ? "$" + r.price_at_suggestion : "—"}</td>
+      <td>${comparePrice != null ? "$" + comparePrice : "—"} ${!isActive ? '<span class="holding-meta">(closed)</span>' : '<span class="holding-meta">(current)</span>'}</td>
+      <td class="${pctSince == null ? "" : (pctSince >= 0 ? "bullish" : "bearish")}">${pctSince != null ? `${pctSince >= 0 ? "+" : ""}${pctSince}%` : "—"}</td>
+      <td><span class="status-badge ${isActive ? "active" : "closed"}">${isActive ? "active" : "closed"}</span></td>
+      <td>
+        <button class="ghost" data-add-signal-ticker="${r.ticker}" data-add-signal-price="${comparePrice != null ? comparePrice : (r.price_at_suggestion || "")}">+ portfolio</button>
+        ${isActive ? `<button class="ghost" data-remove-stock="${r.id}">remove</button>` : ""}
+      </td>
+    </tr>`;
   }).join("");
 
-  document.querySelectorAll("[data-remove-stock]").forEach(btn => {
+  tbody.querySelectorAll("[data-remove-stock]").forEach(btn => {
     btn.addEventListener("click", async () => {
       await SB.rpc("remove_suggested_stock", { p_id: Number(btn.dataset.removeStock) });
+      await loadAll();
+    });
+  });
+  tbody.querySelectorAll("[data-add-signal-ticker]").forEach(btn => {
+    btn.addEventListener("click", async () => {
+      const price = parseFloat(btn.dataset.addSignalPrice);
+      if (!price) return;
+      await SB.insert("portfolio", { ticker: btn.dataset.addSignalTicker, buy_price: price, quantity: 1, exchange: "NYSE" });
       await loadAll();
     });
   });

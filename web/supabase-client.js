@@ -16,6 +16,16 @@ const SB = {
     if (!res.ok) throw new Error(`Supabase insert ${table} failed: ${res.status} ${await res.text()}`);
     return res.json();
   },
+  async update(table, query, patch) {
+    const url = `${window.JARVIS_CONFIG.SUPABASE_URL}/rest/v1/${table}?${query}`;
+    const res = await fetch(url, {
+      method: "PATCH",
+      headers: { ...SB._headers(), "Content-Type": "application/json", "Prefer": "return=representation" },
+      body: JSON.stringify(patch),
+    });
+    if (!res.ok) throw new Error(`Supabase update ${table} failed: ${res.status} ${await res.text()}`);
+    return res.json();
+  },
   async del(table, query) {
     const url = `${window.JARVIS_CONFIG.SUPABASE_URL}/rest/v1/${table}?${query}`;
     const res = await fetch(url, { method: "DELETE", headers: SB._headers() });
