@@ -58,12 +58,28 @@ def find_historical_analog(planet: str, today_date, today_sign: str, today_retro
     return None
 
 
-def _days_left_in_sign(planet_data: dict) -> int:
+# Long-run average degrees/day per sign transit (360 / typical days for a
+# full zodiac cycle). Used as a fallback for the days-left-in-sign estimate
+# below -- confirmed live this needed fixing: near a retrograde/direct
+# station a slow planet's INSTANTANEOUS speed approaches zero, and dividing
+# degrees-remaining by a near-zero speed produced an absurd "3317 days left"
+# for Saturn in production. The average smooths right past that.
+AVG_DEGREES_PER_DAY = {
+    "Sun": 360 / 365.25, "Moon": 360 / 27.3, "Mercury": 360 / 88, "Venus": 360 / 225,
+    "Mars": 360 / 687, "Jupiter": 360 / 4333, "Saturn": 360 / 10759,
+    "Rahu": 360 / 6793, "Ketu": 360 / 6793,
+}
+
+
+def _days_left_in_sign(planet: str, planet_data: dict) -> int:
     speed = planet_data.get("speed") or 0
-    if speed == 0:
-        return 0
+    avg_speed = AVG_DEGREES_PER_DAY.get(planet, 1.0)
+    # If instantaneous speed is too small relative to this planet's average
+    # to trust for a linear projection (i.e. near a station), fall back to
+    # the average -- otherwise a near-zero denominator blows the estimate up.
+    effective_speed = speed if abs(speed) > avg_speed * 0.15 else avg_speed
     degrees_left = 30 - planet_data["degree_in_sign"]
-    return max(0, round(degrees_left / abs(speed)))
+    return max(0, round(degrees_left / abs(effective_speed)))
 
 
 def _historical_outcome_sentence(ticker: str, match_date, planet: str, sign: str, retro: bool) -> str:
@@ -100,7 +116,7 @@ def build_long_term_note(sector: str, ticker: str, direction: str, reasons: list
         return None
     planet_data = today_positions[planet]
     today_sign, today_retro = planet_data["sign"], planet_data["is_retrograde"]
-    days_left = _days_left_in_sign(planet_data)
+    days_left = _days_left_in_sign(planet, planet_data)
 
     note = (
         f"Graha's long-term read on {sector.replace('_', ' ')}: {reasons[0]}. "
