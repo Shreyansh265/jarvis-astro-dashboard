@@ -21,6 +21,18 @@ def run_market_watch() -> list:
         for ticker in tickers:
             ticker_sector.setdefault(ticker, sector)
 
+    # Also price whatever arbitrary tickers the user has manually added to
+    # their real Portfolio (e.g. a holding like ORCL that isn't in our
+    # curated watchlist at all) -- reuses this same table/module instead of
+    # a parallel one, tagged with a sentinel sector so it's distinguishable
+    # from a real astro-signaled sector.
+    try:
+        portfolio_rows = db.select("portfolio", {"select": "ticker"})
+        for row in portfolio_rows:
+            ticker_sector.setdefault(row["ticker"], "Portfolio")
+    except Exception as e:
+        print(f"market_watch: could not load portfolio tickers: {e}")
+
     rows = []
     for ticker, sector in ticker_sector.items():
         try:

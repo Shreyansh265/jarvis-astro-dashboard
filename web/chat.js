@@ -52,8 +52,8 @@ const ChatEngine = {
   _answerPaperTrading(cache) {
     const acct = cache.paperAccount;
     const trades = cache.recentTrades || [];
-    if (!acct) return "The paper trading account hasn't been initialized yet.";
-    let out = `**Graha's paper trading bot** — cash: $${Number(acct.cash).toLocaleString()}\n\n`;
+    if (!acct) return "Graha 2.0 hasn't been initialized yet.";
+    let out = `**Graha 2.0** — cash: $${Number(acct.cash).toLocaleString()}\n\n`;
     if (!trades.length) { out += "No trades yet — nothing's cleared the confidence bar in either direction."; return out; }
     out += "Recent trades:\n" + trades.slice(0, 8).map(t =>
       `${t.trade_date} — ${t.action} ${t.quantity} ${t.ticker} (${t.position_type || "long"}) @ $${t.price}${t.pnl != null ? ` (P&L $${t.pnl})` : ""} — ${t.reasoning}`

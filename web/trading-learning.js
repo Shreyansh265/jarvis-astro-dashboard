@@ -1,7 +1,14 @@
-// Paper Trading tab (ledger, equity, month-to-date progress) and Learning
-// tab (rule confidence, mistakes, weekly review history).
+// Graha 2.0 (paper trading) tab (ledger, equity, month-to-date progress) and
+// Learning tab (rule confidence, mistakes, weekly review history).
 
 const MONTHLY_TARGET_PCT = 15;
+
+function formatDateTime(iso) {
+  if (!iso) return "—";
+  return new Date(iso).toLocaleString(undefined, {
+    month: "short", day: "numeric", hour: "2-digit", minute: "2-digit",
+  });
+}
 
 function renderPaperTrading() {
   const acct = dataCache.paperAccount;
@@ -30,19 +37,37 @@ function renderPaperTrading() {
   const fillPct = mtdPct != null ? Math.max(0, Math.min(100, (mtdPct / MONTHLY_TARGET_PCT) * 100)) : 0;
   document.getElementById("goal-track-fill").style.width = `${fillPct}%`;
 
+  renderClosedTrades();
+}
+
+function renderClosedTrades() {
   const trades = dataCache.recentTrades;
   const listEl = document.getElementById("paper-trades");
-  if (!trades.length) {
-    listEl.innerHTML = `<p class="empty-note">No trades yet — Graha only enters when a sector's possibility indicator clears its threshold, in either direction.</p>`;
+  const byId = {};
+  trades.forEach(t => { byId[t.id] = t; });
+
+  // Pairs each close (SELL/COVER) with its opening trade (BUY/SHORT) via
+  // linked_buy_trade_id, so one round-trip renders as one row with real
+  // entry + exit date/time -- instead of two disconnected ledger lines.
+  // Note: both legs have to be within the loaded recentTrades window
+  // (most recent 50) for this join to succeed; a very long-held position's
+  // opening leg could in principle fall outside that window.
+  const roundTrips = trades
+    .filter(t => t.action === "SELL" || t.action === "COVER")
+    .map(close => ({ close, open: byId[close.linked_buy_trade_id] }))
+    .filter(rt => rt.open);
+
+  if (!roundTrips.length) {
+    listEl.innerHTML = `<p class="empty-note">No closed trades yet — Graha only enters when a sector's possibility indicator clears its threshold, in either direction.</p>`;
     return;
   }
-  listEl.innerHTML = trades.map(t => `
+  listEl.innerHTML = roundTrips.map(({ open, close }) => `
     <div class="trade-row">
-      <span class="trade-action ${t.action}">${t.action}</span>
-      <span class="holding-meta">${t.position_type || "long"}</span>
-      ${t.quantity} ${t.ticker} @ $${t.price} <span class="holding-meta">${t.trade_date}</span>
-      ${t.pnl != null ? `<span class="holding-meta ${t.pnl >= 0 ? "bullish" : "bearish"}"> · P&L $${t.pnl} (price move ${t.pnl_pct}%)</span>` : ""}
-      <div class="trade-reasoning">${t.reasoning}</div>
+      <span class="trade-action ${open.action}">${open.position_type || "long"}</span>
+      ${open.quantity} ${open.ticker}
+      <span class="${close.pnl >= 0 ? "bullish" : "bearish"}">${close.pnl != null ? `P&L $${close.pnl} (${close.pnl_pct}%)` : ""}</span>
+      <div class="holding-meta">entry ${formatDateTime(open.created_at)} @ $${open.price} → exit ${formatDateTime(close.created_at)} @ $${close.price}</div>
+      <div class="trade-reasoning">${close.reasoning}</div>
     </div>
   `).join("");
 }

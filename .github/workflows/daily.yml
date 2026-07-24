@@ -2,8 +2,12 @@ name: Daily Astro Signals + Paper Trading
 
 on:
   schedule:
-    # 13:35 UTC = 9:35am US Eastern, ~5 min after NYSE open, Mon-Fri
-    - cron: '35 13 * * 1-5'
+    # 12:30 UTC = 8:30am US Eastern (EDT) / 7:30am EST -- an hour before the
+    # 9:30am NYSE open, Mon-Fri, so signals are ready before market open
+    # rather than 5 min after. Fixed-UTC cron, so like the old time this
+    # drifts an hour relative to ET across DST changes -- pre-existing
+    # characteristic, not something this change fixes.
+    - cron: '30 12 * * 1-5'
   workflow_dispatch: {}   # lets you trigger it manually from the Actions tab
 
 jobs:
