@@ -60,6 +60,11 @@ def run_weekly_review():
     reviewed = db.select("predictions", {
         "date": f"gte.{week_start.isoformat()}",
         "reviewed": "eq.true",
+        "was_correct": "not.is.null",  # excludes rows marked reviewed with no
+                                        # real outcome (e.g. a ticker that
+                                        # permanently can't be priced) -- those
+                                        # were never actually evaluated, so
+                                        # they shouldn't count toward accuracy
     })
 
     if not reviewed:
