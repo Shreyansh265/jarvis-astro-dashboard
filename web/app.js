@@ -11,6 +11,7 @@ const dataCache = {
   ruleWeights: [],
   equityHistory: [],
   mistakes: [],
+  qqqSignals: [],
 };
 
 function daysAgoISO(days) {
@@ -23,7 +24,7 @@ async function loadAll() {
   const marketSnapshotSince = daysAgoISO(120);
   const [
     latestLog, predictions, portfolio, paperAccount, recentTrades, weeklyReviews,
-    suggestedStocks, marketSnapshot, dailyBriefs, ruleWeights, equityHistory, mistakes,
+    suggestedStocks, marketSnapshot, dailyBriefs, ruleWeights, equityHistory, mistakes, qqqSignals,
   ] = await Promise.all([
     SB.select("planetary_log", "order=date.desc&limit=1"),
     SB.select("predictions", "order=date.desc,created_at.desc&limit=40"),
@@ -42,6 +43,7 @@ async function loadAll() {
     SB.select("rule_weights", "order=weight.desc"),
     SB.select("equity_history", "order=date.asc&limit=90"),
     SB.select("predictions", "was_correct=eq.false&order=date.desc&limit=8"),
+    SB.select("qqq_signals", "order=ts.desc&limit=200"),
   ]);
 
   dataCache.latestLog = latestLog[0] || null;
@@ -56,6 +58,7 @@ async function loadAll() {
   dataCache.ruleWeights = ruleWeights;
   dataCache.equityHistory = equityHistory;
   dataCache.mistakes = mistakes;
+  dataCache.qqqSignals = qqqSignals;
 
   // Overview tab
   renderBrief();
@@ -73,6 +76,9 @@ async function loadAll() {
 
   // Portfolio tab
   renderPortfolioTable();
+
+  // QQQ Analysis tab
+  renderQqqAnalysis();
 
   // Graha 2.0 tab
   renderPaperTrading();

@@ -1,0 +1,41 @@
+name: QQQ Intraday Analysis
+
+on:
+  schedule:
+    # 13:25 UTC = 9:25am US Eastern (EDT), 5 min before the 9:30am NYSE
+    # open, Mon-Fri. One trigger starts a long-running session that loops
+    # internally every 5 minutes until market close or the runtime safety
+    # margin -- see qqq_monitor.py for why (GitHub Actions cron reliability
+    # is about whether a trigger fires, not about a running job's own
+    # internal timing, so one long session beats ~78 separate cron ticks).
+    - cron: '25 13 * * 1-5'
+  workflow_dispatch: {}   # for manual testing mid-session
+
+concurrency:
+  group: qqq-intraday
+  cancel-in-progress: false   # never kill an in-progress session; just skip overlapping starts
+
+jobs:
+  run-qqq-session:
+    runs-on: ubuntu-latest
+    timeout-minutes: 355   # under the 6-hour Actions hard cap; qqq_monitor.py's own MAX_RUNTIME stops well before this too
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        # No pyswisseph needed for this job -- qqq_monitor.py reads the
+        # astro bias from Supabase rather than recomputing ephemeris, so
+        # this install is fast (no C build step).
+        run: pip install requests==2.32.3
+
+      - name: Run QQQ intraday session
+        working-directory: engine
+        env:
+          TWELVE_DATA_API_KEY: ${{ secrets.TWELVE_DATA_API_KEY }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+        run: python qqq_monitor.py

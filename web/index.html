@@ -23,6 +23,7 @@
     <button class="tab-btn" data-tab="stocks">Astro Signals</button>
     <button class="tab-btn" data-tab="portfolio">Portfolio</button>
     <button class="tab-btn" data-tab="trading">Graha 2.0</button>
+    <button class="tab-btn" data-tab="qqq">QQQ Analysis</button>
     <button class="tab-btn" data-tab="learning">Learning</button>
   </nav>
 
@@ -168,6 +169,28 @@
         </div>
       </section>
 
+      <!-- ============ QQQ ANALYSIS ============ -->
+      <section class="tab-pane" id="tab-qqq">
+        <div class="panel">
+          <h2>QQQ Intraday — 5-Minute Analysis</h2>
+          <div class="empty-note movers-note">A long-running session job re-checks levels every 5 minutes during market hours and only logs a new signal when it actually changes. Runs 9:25am-ish to close, Mon-Fri.</div>
+          <div class="trading-stats-row" id="qqq-stat-tiles"></div>
+          <div id="qqq-latest-signal" class="long-term-note"></div>
+          <div id="qqq-sparkline" class="sparkline-wrap"></div>
+        </div>
+        <div class="panel">
+          <h2>Signal History</h2>
+          <div class="table-scroll">
+            <table class="data-table" id="qqq-table">
+              <thead>
+                <tr><th>Time</th><th>Signal</th><th>Price</th><th>VWAP</th><th>Pivot</th><th>Astro Bias</th><th>Outcome</th></tr>
+              </thead>
+              <tbody id="qqq-table-body"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
       <!-- ============ LEARNING ============ -->
       <section class="tab-pane" id="tab-learning">
         <div class="panel">
@@ -213,6 +236,7 @@
 <script src="tabs.js"></script>
 <script src="signals-stocks.js"></script>
 <script src="trading-learning.js"></script>
+<script src="qqq.js"></script>
 <script src="app.js"></script>
 </body>
 </html>
