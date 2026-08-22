@@ -18,7 +18,7 @@
   </header>
 
   <nav class="tabs" id="tab-nav">
-    <button class="tab-btn active" data-tab="overview">Overview</button>
+    <button class="tab-btn active" data-tab="overview">Dashboard</button>
     <button class="tab-btn" data-tab="signals">This Week's Signals</button>
     <button class="tab-btn" data-tab="stocks">Astro Signals</button>
     <button class="tab-btn" data-tab="portfolio">Portfolio</button>
@@ -61,6 +61,18 @@
             <h2>Graha's Picks Right Now</h2>
             <div id="picks-preview"></div>
             <button class="ghost" style="margin-top:10px;width:100%" data-goto-tab="stocks">See all Astro Signals →</button>
+          </div>
+
+          <div class="panel">
+            <h2>Today's QQQ Call</h2>
+            <div id="qqq-call-preview"></div>
+            <button class="ghost" style="margin-top:10px;width:100%" data-goto-tab="qqq">Full QQQ analysis →</button>
+          </div>
+
+          <div class="panel">
+            <h2>This Week's Top Pick</h2>
+            <div id="horizon-preview"></div>
+            <button class="ghost" style="margin-top:10px;width:100%" data-goto-tab="stocks">See weekly/monthly/yearly picks →</button>
           </div>
         </div>
       </section>

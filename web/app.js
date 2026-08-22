@@ -70,11 +70,13 @@ async function loadAll() {
   dataCache.horizonPicks = horizonPicks;
   dataCache.stockDetails = stockDetails;
 
-  // Overview tab
+  // Dashboard tab
   renderBrief();
   renderMovers();
   renderPortfolioPreview();
   renderPicksPreview();
+  renderQqqCallPreview();
+  renderHorizonPreview();
 
   // This Week's Signals tab
   if (dataCache.latestLog) renderZodiacWheel(document.getElementById("orrery-container"), dataCache.latestLog.positions);
@@ -165,6 +167,29 @@ function renderPicksPreview() {
       <span class="holding-meta">${(r.sector || "").replace(/_/g, " ")}</span>
     </div>
   `).join("");
+}
+
+function renderQqqCallPreview() {
+  const el = document.getElementById("qqq-call-preview");
+  const latest = dataCache.qqqCalls[0];
+  if (!latest) { el.innerHTML = `<p class="empty-note">No QQQ call yet today.</p>`; return; }
+  const leanClass = latest.combined_lean === "call" ? "bullish" : (latest.combined_lean === "put" ? "bearish" : "");
+  el.innerHTML = `
+    <div class="qqq-lean-headline ${leanClass}" style="font-size:26px">${(latest.combined_lean || "neutral").toUpperCase()}</div>
+    <div class="holding-meta">astro ${latest.astro_bias || "—"} (${latest.astro_confidence != null ? latest.astro_confidence + "%" : "—"}) · technical ${latest.technical_bias || "—"}</div>
+  `;
+}
+
+function renderHorizonPreview() {
+  const el = document.getElementById("horizon-preview");
+  const weekly = dataCache.horizonPicks.filter(r => r.horizon === "weekly").sort((a, b) => a.rank - b.rank);
+  if (!weekly.length) { el.innerHTML = `<p class="empty-note">No weekly picks yet.</p>`; return; }
+  const top = weekly[0];
+  el.innerHTML = `
+    <div class="sector-name">${top.sector.replace(/_/g, " ")}</div>
+    <div class="sector-direction ${top.today_tone}">${top.today_tone} <span class="sample-quality-badge ${top.sample_quality}">${top.sample_quality} confidence</span></div>
+    <div class="holding-meta">${(top.tickers || []).join(", ")}</div>
+  `;
 }
 
 function _latestPriceFor(ticker) {
