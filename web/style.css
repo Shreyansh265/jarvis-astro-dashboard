@@ -203,6 +203,18 @@ header.masthead {
 .sparkline.bullish { color: var(--bullish); }
 .sparkline.bearish { color: var(--bearish); }
 
+/* ---------- QQQ Analysis tab ---------- */
+.qqq-lean-headline {
+  font-family: 'Cormorant Garamond', serif; font-size: 40px; font-weight: 600;
+  color: var(--parchment-dim); letter-spacing: 0.04em;
+}
+.qqq-lean-headline.bullish { color: var(--bullish); text-shadow: 0 0 16px rgba(56, 214, 168, 0.35); }
+.qqq-lean-headline.bearish { color: var(--bearish); text-shadow: 0 0 16px rgba(255, 92, 108, 0.35); }
+.qqq-tiers { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-top: 16px; }
+@media (max-width: 700px) { .qqq-tiers { grid-template-columns: 1fr; } }
+.qqq-tier { background: var(--ink-panel-raised); border: 1px solid var(--hairline); border-radius: var(--radius); padding: 12px 14px; font-size: 12.5px; line-height: 1.5; }
+.qqq-tier-label { font-family: 'IBM Plex Mono', monospace; font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--brass); margin-bottom: 6px; }
+
 .trade-row { padding: 8px 0; border-bottom: 1px solid var(--hairline); font-size: 12px; }
 .trade-row:last-child { border-bottom: none; }
 .trade-action { font-family: 'IBM Plex Mono', monospace; font-weight: 600; }

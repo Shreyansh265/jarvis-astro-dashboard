@@ -172,18 +172,18 @@
       <!-- ============ QQQ ANALYSIS ============ -->
       <section class="tab-pane" id="tab-qqq">
         <div class="panel">
-          <h2>QQQ Intraday — 5-Minute Analysis</h2>
-          <div class="empty-note movers-note">A long-running session job re-checks levels every 5 minutes during market hours and only logs a new signal when it actually changes. Runs 9:25am-ish to close, Mon-Fri.</div>
+          <h2>Today's QQQ Call</h2>
+          <div class="empty-note movers-note">One graduated call each morning, combining Technology-sector astrology with recent price action. No real options-chain data exists on our data plan, so this is a directional lean with qualitative risk tiers -- not real strikes, premiums, or greeks.</div>
+          <div id="qqq-today-lean"></div>
           <div class="trading-stats-row" id="qqq-stat-tiles"></div>
-          <div id="qqq-latest-signal" class="long-term-note"></div>
-          <div id="qqq-sparkline" class="sparkline-wrap"></div>
+          <div class="qqq-tiers" id="qqq-risk-tiers"></div>
         </div>
         <div class="panel">
-          <h2>Signal History</h2>
+          <h2>Call History</h2>
           <div class="table-scroll">
             <table class="data-table" id="qqq-table">
               <thead>
-                <tr><th>Time</th><th>Signal</th><th>Price</th><th>VWAP</th><th>Pivot</th><th>Astro Bias</th><th>Outcome</th></tr>
+                <tr><th>Date</th><th>Lean</th><th>Astro Bias</th><th>Technical Bias</th><th>Pivot</th><th>Outcome</th></tr>
               </thead>
               <tbody id="qqq-table-body"></tbody>
             </table>

@@ -1,58 +1,47 @@
-// QQQ Analysis tab. Reads from dataCache.qqqSignals (populated by app.js's
-// loadAll()) -- see engine/qqq_monitor.py for how these rows get written.
+// QQQ Analysis tab. Reads from dataCache.qqqCalls (populated by app.js's
+// loadAll()) -- one row per day from engine/qqq_daily_call.py, never a
+// bare/empty call (always a lean + all three risk-tier notes).
 
 function renderQqqAnalysis() {
-  const rows = dataCache.qqqSignals; // ordered ts.desc
+  const rows = dataCache.qqqCalls; // ordered call_date.desc
+  const leanEl = document.getElementById("qqq-today-lean");
   const tilesEl = document.getElementById("qqq-stat-tiles");
-  const latestEl = document.getElementById("qqq-latest-signal");
-  const sparkEl = document.getElementById("qqq-sparkline");
+  const tiersEl = document.getElementById("qqq-risk-tiers");
   const tbody = document.getElementById("qqq-table-body");
 
   if (!rows.length) {
+    leanEl.innerHTML = `<p class="empty-note">No QQQ call yet -- runs each morning as part of the daily job, or trigger it manually from the repo's Actions tab.</p>`;
     tilesEl.innerHTML = "";
-    latestEl.innerHTML = `<p class="empty-note">No QQQ session data yet -- the intraday job runs ~9:25am ET on market days, or trigger it manually from the repo's Actions tab.</p>`;
-    sparkEl.innerHTML = "";
-    tbody.innerHTML = `<tr><td colspan="7" class="empty-note">Nothing logged yet.</td></tr>`;
+    tiersEl.innerHTML = "";
+    tbody.innerHTML = `<tr><td colspan="6" class="empty-note">Nothing logged yet.</td></tr>`;
     return;
   }
 
   const latest = rows[0];
+  const leanClass = latest.combined_lean === "call" ? "bullish" : (latest.combined_lean === "put" ? "bearish" : "");
+  leanEl.innerHTML = `<div class="qqq-lean-headline ${leanClass}">${(latest.combined_lean || "neutral").toUpperCase()}</div>
+    <div class="holding-meta">${latest.call_date} · astro bias ${latest.astro_bias || "—"} (${latest.astro_confidence != null ? latest.astro_confidence + "%" : "—"}) · technical bias ${latest.technical_bias || "—"}</div>`;
+
   tilesEl.innerHTML = `
-    <div class="stat-tile"><div class="stat-label">Price</div><div class="stat-value">$${latest.price}</div></div>
-    <div class="stat-tile"><div class="stat-label">VWAP</div><div class="stat-value">$${latest.vwap ?? "—"}</div></div>
     <div class="stat-tile"><div class="stat-label">Pivot</div><div class="stat-value">$${latest.pivot ?? "—"}</div></div>
-    <div class="stat-tile"><div class="stat-label">Signal</div><div class="stat-value ${latest.signal === "BUY" ? "bullish" : (latest.signal === "SHORT" ? "bearish" : "")}">${latest.signal}</div></div>
+    <div class="stat-tile"><div class="stat-label">R1 / R2</div><div class="stat-value">$${latest.r1 ?? "—"} / $${latest.r2 ?? "—"}</div></div>
+    <div class="stat-tile"><div class="stat-label">S1 / S2</div><div class="stat-value">$${latest.s1 ?? "—"} / $${latest.s2 ?? "—"}</div></div>
   `;
-  latestEl.innerHTML = `<strong>${latest.signal}</strong> as of ${new Date(latest.ts).toLocaleTimeString()} — ${latest.reasoning || ""}<br>
-    <span class="holding-meta">R2 ${latest.r2 ?? "—"} / R1 ${latest.r1 ?? "—"} / S1 ${latest.s1 ?? "—"} / S2 ${latest.s2 ?? "—"} · EMA9 ${latest.ema9 ?? "—"} / EMA20 ${latest.ema20 ?? "—"} · Opening range ${latest.opening_range_low ?? "—"}-${latest.opening_range_high ?? "—"}</span>`;
 
-  const closes = rows.slice(0, 60).map(r => Number(r.price)).reverse();
-  if (closes.length >= 2) {
-    const min = Math.min(...closes), max = Math.max(...closes);
-    const w = 600, h = 70, pad = 4;
-    const range = (max - min) || 1;
-    const points = closes.map((v, i) => {
-      const x = pad + (i / (closes.length - 1)) * (w - pad * 2);
-      const y = h - pad - ((v - min) / range) * (h - pad * 2);
-      return `${x.toFixed(1)},${y.toFixed(1)}`;
-    }).join(" ");
-    const trendUp = closes[closes.length - 1] >= closes[0];
-    sparkEl.innerHTML = `<svg viewBox="0 0 ${w} ${h}" class="sparkline ${trendUp ? "bullish" : "bearish"}" preserveAspectRatio="none">
-      <polyline points="${points}" fill="none" stroke="currentColor" stroke-width="2" />
-    </svg>`;
-  } else {
-    sparkEl.innerHTML = "";
-  }
+  tiersEl.innerHTML = `
+    <div class="qqq-tier"><div class="qqq-tier-label">Aggressive</div><div>${latest.aggressive_note || ""}</div></div>
+    <div class="qqq-tier"><div class="qqq-tier-label">Moderate</div><div>${latest.moderate_note || ""}</div></div>
+    <div class="qqq-tier"><div class="qqq-tier-label">Conservative</div><div>${latest.conservative_note || ""}</div></div>
+  `;
 
-  tbody.innerHTML = rows.slice(0, 50).map(r => `
-    <tr class="${r.signal === "BUY" ? "row-bullish" : (r.signal === "SHORT" ? "row-bearish" : "")}">
-      <td>${new Date(r.ts).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" })}</td>
-      <td class="${r.signal === "BUY" ? "bullish" : (r.signal === "SHORT" ? "bearish" : "")}">${r.signal}</td>
-      <td>$${r.price}</td>
-      <td>$${r.vwap ?? "—"}</td>
+  tbody.innerHTML = rows.slice(0, 60).map(r => `
+    <tr class="${r.combined_lean === "call" ? "row-bullish" : (r.combined_lean === "put" ? "row-bearish" : "")}">
+      <td>${r.call_date}</td>
+      <td class="${r.combined_lean === "call" ? "bullish" : (r.combined_lean === "put" ? "bearish" : "")}">${(r.combined_lean || "neutral").toUpperCase()}</td>
+      <td>${r.astro_bias ?? "—"} ${r.astro_confidence != null ? `(${r.astro_confidence}%)` : ""}</td>
+      <td>${r.technical_bias ?? "—"}</td>
       <td>$${r.pivot ?? "—"}</td>
-      <td>${r.astro_bias ?? "—"} ${r.astro_possibility_indicator != null ? `(${r.astro_possibility_indicator}%)` : ""}</td>
-      <td>${r.signal === "HOLD" ? "n/a" : `<span class="status-badge ${r.outcome === "correct" ? "active" : (r.outcome === "incorrect" ? "closed" : "")}">${r.outcome}</span>`}</td>
+      <td>${r.combined_lean === "neutral" ? "n/a" : (r.was_correct == null ? "pending" : `<span class="status-badge ${r.was_correct ? "active" : "closed"}">${r.was_correct ? "correct" : "incorrect"}</span>`)}</td>
     </tr>
   `).join("");
 }
