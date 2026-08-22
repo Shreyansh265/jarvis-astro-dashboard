@@ -1,0 +1,37 @@
+name: Portfolio Stock Detail
+
+on:
+  schedule:
+    # 21:00 UTC = 5pm US Eastern (EDT) / 4pm EST -- after the 4pm ET NYSE
+    # close, so "why did this move today" is actually answerable (news
+    # breaks during the session; a pre-market batch would always be a day
+    # stale on exactly this question). Deliberately its own workflow, not
+    # folded into daily.yml's pre-market run -- that run has a hard
+    # external deadline (market open) and has already shown real 429s
+    # under concurrent-workflow credit pressure.
+    - cron: '0 21 * * 1-5'
+  workflow_dispatch: {}
+
+jobs:
+  run-portfolio-detail:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        # No pyswisseph needed -- reads sector context from Supabase
+        # rather than recomputing ephemeris, so this install is fast.
+        run: pip install requests==2.32.3
+
+      - name: Run portfolio stock detail
+        working-directory: engine
+        env:
+          TWELVE_DATA_API_KEY: ${{ secrets.TWELVE_DATA_API_KEY }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+          FINNHUB_API_KEY: ${{ secrets.FINNHUB_API_KEY }}
+        run: python portfolio_detail.py

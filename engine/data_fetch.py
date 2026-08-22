@@ -48,12 +48,16 @@ def get_quote(ticker: str) -> dict:
     data = resp.json()
     if data.get("status") == "error" or "close" not in data:
         raise RuntimeError(f"Twelve Data error for {ticker}: {data}")
+    week52 = data.get("fifty_two_week") or {}
     result = {
         "ticker": ticker,
         "price": float(data["close"]),
         "change": float(data.get("change", 0)),
         "percent_change": float(data.get("percent_change", 0)),
         "timestamp": data.get("datetime"),
+        # Already sitting in the raw response, just unused until now.
+        "week52_high": float(week52["high"]) if week52.get("high") else None,
+        "week52_low": float(week52["low"]) if week52.get("low") else None,
     }
     _quote_cache[ticker] = result
     return result
@@ -87,6 +91,48 @@ def get_time_series(ticker: str, interval: str = "1day", outputsize: int = 500,
     return [{"date": v["datetime"], "close": float(v["close"]),
               "open": float(v["open"]), "high": float(v["high"]), "low": float(v["low"])}
              for v in data["values"]]
+
+
+def get_statistics(ticker: str) -> dict:
+    """
+    Real fundamentals (P/E, market cap, profit margin, etc.) -- confirmed
+    live this session that Twelve Data's free tier has this endpoint
+    (untested before now, response shape smoke-tested against AAPL).
+    """
+    if not API_KEY:
+        raise RuntimeError("TWELVE_DATA_API_KEY not set in environment")
+    _rate_limit()
+    symbol = _normalize_symbol(ticker)
+    resp = requests.get(f"{BASE_URL}/statistics", params={"symbol": symbol, "apikey": API_KEY}, timeout=20)
+    data = resp.json()
+    if data.get("status") == "error" or "statistics" not in data:
+        raise RuntimeError(f"Twelve Data error for {ticker}: {data}")
+    stats = data["statistics"]
+    valuations = stats.get("valuations_metrics", {})
+    financials = stats.get("financials", {})
+    return {
+        "ticker": ticker,
+        "pe_ratio": valuations.get("trailing_pe"),
+        "market_cap": valuations.get("market_capitalization"),
+        "profit_margin": financials.get("profit_margin"),
+    }
+
+
+def get_earnings(ticker: str) -> list:
+    """
+    Real EPS actual/estimate/surprise history -- confirmed live this
+    session that Twelve Data's free tier has this endpoint (untested
+    before now, response shape smoke-tested against AAPL).
+    """
+    if not API_KEY:
+        raise RuntimeError("TWELVE_DATA_API_KEY not set in environment")
+    _rate_limit()
+    symbol = _normalize_symbol(ticker)
+    resp = requests.get(f"{BASE_URL}/earnings", params={"symbol": symbol, "apikey": API_KEY}, timeout=20)
+    data = resp.json()
+    if data.get("status") == "error" or "earnings" not in data:
+        raise RuntimeError(f"Twelve Data error for {ticker}: {data}")
+    return data["earnings"]
 
 
 if __name__ == "__main__":
