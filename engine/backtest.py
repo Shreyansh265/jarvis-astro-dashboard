@@ -66,6 +66,84 @@ def backtest_planet_sector(planet: str, sector: str, ticker: str,
     }
 
 
+def backtest_planet_sector_multi_horizon(planet: str, sector: str, ticker: str,
+                                          lookback_days: int = 1095,
+                                          forward_windows: tuple = (5, 21, 252)) -> dict:
+    """
+    Same method as backtest_planet_sector, but evaluates MULTIPLE forward
+    windows (horizons) from ONE fetched price history -- fetching once per
+    horizon would triple this feature's API cost across 3 horizons for
+    zero new information, since the same bars serve all of them. Each
+    bar's planetary tone is also computed exactly once and reused across
+    every horizon's evaluation, rather than recomputed per horizon.
+
+    Reports TWO different counts per horizon, deliberately kept separate:
+      - hit_rate: from a dense day-by-day walk (more data, but for a long
+        forward_window the windows overlap heavily and are NOT independent
+        observations of each other).
+      - sample_size: from a STRIDE-sampled walk (stride = forward_window,
+        non-overlapping) -- the real number of independent observations.
+        A 252-day-forward "hit rate" computed by walking every single day
+        over a 1095-day lookback produces hundreds of overlapping trials
+        that are really only ~4 independent years of evidence. Reporting
+        the overlapping count alone as "sample size" would be statistically
+        dishonest for the longer horizons -- callers should use sample_size
+        (and the sample_quality tier derived from it) to judge how much to
+        trust hit_rate, especially at the yearly horizon.
+    """
+    max_forward = max(forward_windows)
+    bars = data_fetch.get_time_series(ticker, interval="1day", outputsize=lookback_days + max_forward + 10)
+    if len(bars) < max_forward + 10:
+        return {"planet": planet, "sector": sector, "ticker": ticker,
+                "horizons": {}, "error": "insufficient historical data"}
+
+    tones = []
+    for bar in bars:
+        bar_date = datetime.strptime(bar["date"][:10], "%Y-%m-%d").replace(tzinfo=timezone.utc)
+        pos = get_positions(bar_date)
+        if planet not in pos:
+            tones.append(None)
+            continue
+        tone, _, _ = _planet_base_tone(planet, pos)
+        tones.append(tone if tone in ("bullish", "bearish") else None)
+
+    horizons = {}
+    for forward_window in forward_windows:
+        hits, total_checked = 0, 0
+        examples = []
+        for i in range(len(bars) - forward_window):
+            tone = tones[i]
+            if tone is None:
+                continue
+            start_price, end_price = bars[i]["close"], bars[i + forward_window]["close"]
+            actual_direction = "bullish" if end_price > start_price else "bearish"
+            actual_pct = round((end_price - start_price) / start_price * 100, 2)
+            total_checked += 1
+            correct = (tone == actual_direction)
+            if correct:
+                hits += 1
+            if len(examples) < 5:
+                examples.append({"date": bars[i]["date"][:10], "predicted": tone,
+                                  "actual": actual_direction, "actual_pct_move": actual_pct, "correct": correct})
+
+        sample_size = 0
+        i = 0
+        while i < len(bars) - forward_window:
+            if tones[i] is not None:
+                sample_size += 1
+            i += forward_window
+
+        sample_quality = "low" if sample_size <= 2 else ("medium" if sample_size <= 5 else "high")
+        hit_rate = round(hits / total_checked, 3) if total_checked else None
+        horizons[forward_window] = {
+            "hit_rate": hit_rate, "days_checked": total_checked,
+            "sample_size": sample_size, "sample_quality": sample_quality,
+            "sample_events": examples,
+        }
+
+    return {"planet": planet, "sector": sector, "ticker": ticker, "horizons": horizons}
+
+
 def backtest_all_rules(lookback_days: int = 365, forward_window: int = 5) -> list:
     from rulerships import SECTOR_TICKERS
     results = []
