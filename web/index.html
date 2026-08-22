@@ -83,6 +83,24 @@
       <!-- ============ ASTRO SIGNALS ============ -->
       <section class="tab-pane" id="tab-stocks">
         <div class="panel">
+          <h2>Best of the Best: Weekly / Monthly / Yearly Picks</h2>
+          <div class="empty-note movers-note">Real backtested hit-rate x today's live planetary strength, ranked per horizon. Sample size is shown honestly -- a yearly pick backed by 3-4 independent years of evidence is labeled "low" confidence, not hidden behind a big-looking but overlapping number.</div>
+          <div class="horizon-columns">
+            <div>
+              <div class="horizon-column-label">This Week</div>
+              <div id="horizon-weekly"></div>
+            </div>
+            <div>
+              <div class="horizon-column-label">This Month</div>
+              <div id="horizon-monthly"></div>
+            </div>
+            <div>
+              <div class="horizon-column-label">This Year</div>
+              <div id="horizon-yearly"></div>
+            </div>
+          </div>
+        </div>
+        <div class="panel">
           <h2>Astro Signals</h2>
           <div class="empty-note movers-note">Every individual stock Graha has ever suggested within a signaled sector, with the price at the time it was suggested and its current (or closed-out) price.</div>
           <div class="table-scroll">
@@ -227,6 +245,14 @@
     Paper trading uses simulated money only. The 15%/month figure is a tracked target, never a guarantee.
   </div>
 
+</div>
+
+<!-- ============ STOCK DETAIL MODAL ============ -->
+<div class="modal-backdrop" id="stock-detail-backdrop" hidden>
+  <div class="modal-panel">
+    <button class="ghost modal-close" id="stock-detail-close">close</button>
+    <div id="stock-detail-content"></div>
+  </div>
 </div>
 
 <script src="config.js"></script>

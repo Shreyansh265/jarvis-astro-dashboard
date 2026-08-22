@@ -12,6 +12,8 @@ const dataCache = {
   equityHistory: [],
   mistakes: [],
   qqqCalls: [],
+  horizonPicks: [],
+  stockDetails: [],
 };
 
 function daysAgoISO(days) {
@@ -25,6 +27,7 @@ async function loadAll() {
   const [
     latestLog, predictions, portfolio, paperAccount, recentTrades, weeklyReviews,
     suggestedStocks, marketSnapshot, dailyBriefs, ruleWeights, equityHistory, mistakes, qqqCalls,
+    horizonPicks, stockDetails,
   ] = await Promise.all([
     SB.select("planetary_log", "order=date.desc&limit=1"),
     SB.select("predictions", "order=date.desc,created_at.desc&limit=40"),
@@ -44,6 +47,11 @@ async function loadAll() {
     SB.select("equity_history", "order=date.asc&limit=90"),
     SB.select("predictions", "was_correct=eq.false&order=date.desc&limit=8"),
     SB.select("qqq_daily_call", "order=call_date.desc&limit=90"),
+    SB.select("horizon_picks", "order=period_start.desc,rank.asc&limit=60"),
+    // Latest row per ticker is enough for "view details" -- bounded, not
+    // full history (there's no need to keep every past day's snapshot
+    // loaded client-side for this).
+    SB.select("stock_detail", "order=detail_date.desc&limit=200"),
   ]);
 
   dataCache.latestLog = latestLog[0] || null;
@@ -59,6 +67,8 @@ async function loadAll() {
   dataCache.equityHistory = equityHistory;
   dataCache.mistakes = mistakes;
   dataCache.qqqCalls = qqqCalls;
+  dataCache.horizonPicks = horizonPicks;
+  dataCache.stockDetails = stockDetails;
 
   // Overview tab
   renderBrief();
@@ -72,6 +82,7 @@ async function loadAll() {
   renderAspects();
 
   // Astro Signals tab
+  renderHorizonPicks();
   renderAstroStocks();
 
   // Portfolio tab
@@ -199,6 +210,7 @@ function renderPortfolioTable() {
       <td class="${pnl == null ? "" : (pnl >= 0 ? "bullish" : "bearish")}">${pnl != null ? `$${pnl.toFixed(2)} (${pnlPct}%)` : "—"}</td>
       <td><span class="status-badge ${isOpen ? "open" : "closed"}">${isOpen ? "open" : "closed"}</span></td>
       <td>
+        <button class="ghost" data-view-detail="${r.ticker}">details</button>
         ${isOpen ? `<button class="ghost" data-sell-holding="${r.id}">sell</button>` : ""}
         <button class="ghost" data-remove-holding="${r.id}">remove</button>
       </td>
@@ -211,6 +223,77 @@ function renderPortfolioTable() {
   tbody.querySelectorAll("[data-remove-holding]").forEach(btn => {
     btn.addEventListener("click", () => removeHolding(Number(btn.dataset.removeHolding)));
   });
+  tbody.querySelectorAll("[data-view-detail]").forEach(btn => {
+    btn.addEventListener("click", () => openStockDetail(btn.dataset.viewDetail));
+  });
+}
+
+// ---------- Stock detail modal ----------
+function openStockDetail(ticker) {
+  const backdrop = document.getElementById("stock-detail-backdrop");
+  const content = document.getElementById("stock-detail-content");
+  const detail = dataCache.stockDetails.find(d => d.ticker === ticker);
+
+  if (!detail) {
+    // Real dead-zone, not an edge case to discover in QA: a ticker added
+    // to the portfolio today hasn't been through a post-close
+    // portfolio_detail.py run yet.
+    content.innerHTML = `
+      <h2>${ticker}</h2>
+      <p class="empty-note">Details compute after tonight's run (portfolio_detail.py runs post-market-close). Check back tomorrow.</p>`;
+    backdrop.hidden = false;
+    return;
+  }
+
+  const newsAsOf = detail.news_as_of ? new Date(detail.news_as_of).toLocaleString() : "—";
+  const newsItems = detail.news || [];
+  content.innerHTML = `
+    <h2>${detail.ticker}</h2>
+    <div class="holding-meta">as of ${detail.detail_date}</div>
+
+    <div class="detail-section">
+      <h3>Technical</h3>
+      <div class="detail-stats-row">
+        <div class="stat-tile"><div class="stat-label">SMA 20</div><div class="stat-value">${detail.sma_20 ?? "—"}</div></div>
+        <div class="stat-tile"><div class="stat-label">SMA 50</div><div class="stat-value">${detail.sma_50 ?? "—"}</div></div>
+        <div class="stat-tile"><div class="stat-label">RSI 14</div><div class="stat-value">${detail.rsi_14 ?? "—"}</div></div>
+      </div>
+      <div class="holding-meta">52-week range: ${detail.week52_low ?? "—"} – ${detail.week52_high ?? "—"}</div>
+    </div>
+
+    <div class="detail-section">
+      <h3>Financial</h3>
+      <div class="detail-stats-row">
+        <div class="stat-tile"><div class="stat-label">P/E</div><div class="stat-value">${detail.pe_ratio ?? "—"}</div></div>
+        <div class="stat-tile"><div class="stat-label">Market Cap</div><div class="stat-value">${detail.market_cap != null ? "$" + Number(detail.market_cap).toLocaleString() : "—"}</div></div>
+        <div class="stat-tile"><div class="stat-label">Profit Margin</div><div class="stat-value">${detail.profit_margin != null ? Math.round(detail.profit_margin * 1000) / 10 + "%" : "—"}</div></div>
+      </div>
+    </div>
+
+    <div class="detail-section">
+      <h3>Macro / Sector Context</h3>
+      <div class="empty-note movers-note">Grounded in this ticker's sector signal, not a real geopolitical event feed.</div>
+      ${detail.sector ? `<div class="sector-direction ${detail.sector_direction}">${detail.sector.replace(/_/g, " ")} — ${detail.sector_direction} (${detail.sector_possibility_indicator}%)</div>
+        <div class="sector-reason">${(detail.sector_reasons || []).join(" · ")}</div>
+        ${detail.long_term_note ? `<div class="long-term-note">${detail.long_term_note}</div>` : ""}` : `<p class="empty-note">No sector context available for this ticker.</p>`}
+    </div>
+
+    <div class="detail-section">
+      <h3>Recent News</h3>
+      <div class="holding-meta">as of ${newsAsOf}</div>
+      ${newsItems.length ? newsItems.map(n => `
+        <div class="news-item">
+          <a href="${n.url}" target="_blank" rel="noopener">${n.headline}</a>
+          <div class="holding-meta">${n.source || ""}</div>
+        </div>
+      `).join("") : `<p class="empty-note">No recent news available.</p>`}
+    </div>
+  `;
+  backdrop.hidden = false;
+}
+
+function closeStockDetail() {
+  document.getElementById("stock-detail-backdrop").hidden = true;
 }
 
 // ---------- Portfolio actions ----------
@@ -284,6 +367,10 @@ document.addEventListener("DOMContentLoaded", () => {
   setInterval(tickClock, 1000);
   document.getElementById("add-holding-form").addEventListener("submit", addHolding);
   document.getElementById("chat-form").addEventListener("submit", sendChat);
+  document.getElementById("stock-detail-close").addEventListener("click", closeStockDetail);
+  document.getElementById("stock-detail-backdrop").addEventListener("click", (e) => {
+    if (e.target.id === "stock-detail-backdrop") closeStockDetail();
+  });
   loadAll();
   loadChatHistory();
 });

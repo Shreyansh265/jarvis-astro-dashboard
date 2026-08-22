@@ -1,6 +1,40 @@
 // This Week's Signals tab (sector grid + aspects) and Astro Stocks tab.
 // Reads from the shared dataCache populated by app.js's loadAll().
 
+function renderHorizonPicks() {
+  const containers = { weekly: document.getElementById("horizon-weekly"),
+                        monthly: document.getElementById("horizon-monthly"),
+                        yearly: document.getElementById("horizon-yearly") };
+  const rows = dataCache.horizonPicks;
+
+  for (const horizon of ["weekly", "monthly", "yearly"]) {
+    const el = containers[horizon];
+    // horizonPicks is ordered period_start.desc, so the first period_start
+    // seen per horizon is the current/latest one -- take only those rows.
+    const forHorizon = rows.filter(r => r.horizon === horizon);
+    if (!forHorizon.length) {
+      el.innerHTML = `<p class="empty-note">No ${horizon} picks yet.</p>`;
+      continue;
+    }
+    const latestPeriod = forHorizon[0].period_start;
+    const current = forHorizon.filter(r => r.period_start === latestPeriod).sort((a, b) => a.rank - b.rank);
+    el.innerHTML = current.map(r => `
+      <div class="horizon-card ${r.today_tone === "bullish" ? "bullish" : (r.today_tone === "bearish" ? "bearish" : "")}">
+        <div class="horizon-card-top">
+          <span class="sector-name">${r.sector.replace(/_/g, " ")}</span>
+          <span class="horizon-rank">#${r.rank}</span>
+        </div>
+        <div class="sector-direction ${r.today_tone === "bullish" ? "bullish" : "bearish"}">${r.today_tone}
+          <span class="sample-quality-badge ${r.sample_quality}">${r.sample_quality} confidence</span>
+        </div>
+        <div class="sector-reason">Backtested hit-rate ${r.hit_rate != null ? Math.round(r.hit_rate * 100) + "%" : "—"}
+          over ${r.sample_size} independent period(s) · driven by ${r.planet}</div>
+        <div class="horizon-tickers">${(r.tickers || []).join(", ")}</div>
+      </div>
+    `).join("");
+  }
+}
+
 function renderSectorCards() {
   const el = document.getElementById("sector-grid");
   const preds = dataCache.latestPredictions;
