@@ -304,3 +304,98 @@ drop policy if exists "public read qqq_strategy_weights" on qqq_strategy_weights
 create policy "public read qqq_strategy_weights" on qqq_strategy_weights for select using (true);
 insert into qqq_strategy_weights (key, weight) select 'astro_component', 1.0
   where not exists (select 1 from qqq_strategy_weights where key = 'astro_component');
+
+-- ===================================================================
+-- Epic 3 additions (horizon picks, portfolio stock detail, QQQ redesign)
+-- Also idempotent.
+-- ===================================================================
+
+-- Weekly/monthly/yearly sector+stock picks, backtested per horizon.
+-- sample_size is a STRIDE-sampled (non-overlapping) count of independent
+-- observations -- deliberately separate from hit_rate (which is computed
+-- from a denser overlapping daily walk) so the UI can disclose how much
+-- real independent evidence backs a pick instead of implying false
+-- precision from a big-looking but highly autocorrelated N. period_start
+-- is quantized per horizon (Monday-of-week / 1st-of-month / Jan-1) so
+-- weekly re-runs upsert instead of creating near-duplicate rows.
+create table if not exists horizon_picks (
+    id bigint generated always as identity primary key,
+    horizon text not null check (horizon in ('weekly','monthly','yearly')),
+    period_start date not null,
+    sector text not null,
+    planet text not null,
+    hit_rate numeric,
+    sample_size integer not null,
+    sample_quality text not null check (sample_quality in ('low','medium','high')),
+    today_tone text,
+    today_strength numeric,
+    rank integer,
+    tickers jsonb,
+    reasons jsonb,
+    reviewed_at timestamptz,
+    was_correct boolean,
+    outcome_pct_change numeric,
+    created_at timestamptz not null default now(),
+    unique (horizon, sector, period_start)
+);
+alter table horizon_picks enable row level security;
+drop policy if exists "public read horizon_picks" on horizon_picks;
+create policy "public read horizon_picks" on horizon_picks for select using (true);
+
+-- One row per portfolio ticker per day: technical + financial + macro-astro
+-- context + real news. Computed post-market-close (not pre-market) since
+-- "why did this move today" is only answerable after today happened.
+-- news_as_of lets the UI disclose exactly how stale the news block is,
+-- per-view, rather than relying on a general site-wide disclaimer.
+create table if not exists stock_detail (
+    id bigint generated always as identity primary key,
+    ticker text not null,
+    detail_date date not null,
+    pe_ratio numeric,
+    market_cap numeric,
+    profit_margin numeric,
+    sma_20 numeric,
+    sma_50 numeric,
+    rsi_14 numeric,
+    week52_high numeric,
+    week52_low numeric,
+    sector text,
+    sector_direction text,
+    sector_possibility_indicator numeric,
+    sector_reasons jsonb,
+    long_term_note text,
+    news jsonb,
+    news_as_of timestamptz,
+    created_at timestamptz not null default now(),
+    unique (ticker, detail_date)
+);
+alter table stock_detail enable row level security;
+drop policy if exists "public read stock_detail" on stock_detail;
+create policy "public read stock_detail" on stock_detail for select using (true);
+
+-- QQQ's redesigned once-daily morning call (replaces the old continuous
+-- qqq_signals loop -- that table/mechanism is retired, not reused, since
+-- the whole point of this redesign is a single graduated call instead of
+-- a threshold-gated stream). combined_lean is never left ungraded --
+-- always call/put/neutral with all three risk-tier notes populated, so
+-- there's always something readable, not a silent gate failure.
+create table if not exists qqq_daily_call (
+    id bigint generated always as identity primary key,
+    call_date date not null unique,
+    astro_bias text,
+    astro_confidence numeric,
+    technical_bias text,
+    pivot numeric, r1 numeric, r2 numeric, s1 numeric, s2 numeric,
+    combined_lean text check (combined_lean in ('call','put','neutral')),
+    aggressive_note text,
+    moderate_note text,
+    conservative_note text,
+    reviewed_at timestamptz,
+    actual_close numeric,
+    was_correct boolean,
+    weight_after numeric,
+    created_at timestamptz not null default now()
+);
+alter table qqq_daily_call enable row level security;
+drop policy if exists "public read qqq_daily_call" on qqq_daily_call;
+create policy "public read qqq_daily_call" on qqq_daily_call for select using (true);
