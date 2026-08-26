@@ -72,6 +72,47 @@ function renderClosedTrades() {
   `).join("");
 }
 
+function wireResetAccountButton() {
+  const openBtn = document.getElementById("reset-account-btn");
+  const modal = document.getElementById("reset-account-modal");
+  const cancelBtn = document.getElementById("reset-account-cancel");
+  const form = document.getElementById("reset-account-form");
+  const cashInput = document.getElementById("reset-account-cash");
+  const errEl = document.getElementById("reset-account-error");
+  if (!openBtn) return;
+
+  const closeModal = () => { modal.hidden = true; errEl.textContent = ""; };
+
+  openBtn.addEventListener("click", () => {
+    cashInput.value = "20000";
+    errEl.textContent = "";
+    modal.hidden = false;
+  });
+  cancelBtn.addEventListener("click", closeModal);
+  modal.addEventListener("click", (e) => { if (e.target === modal) closeModal(); });
+
+  form.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const newCash = Number(cashInput.value);
+    if (!(newCash > 0)) {
+      errEl.textContent = "Enter a starting capital greater than $0.";
+      return;
+    }
+    const submitBtn = form.querySelector("button[type=submit]");
+    submitBtn.disabled = true;
+    try {
+      await SB.rpc("reset_paper_account", { new_cash: newCash });
+      closeModal();
+      if (typeof loadAll === "function") await loadAll();
+    } catch (err) {
+      errEl.textContent = err.message || "Could not reset account.";
+    } finally {
+      submitBtn.disabled = false;
+    }
+  });
+}
+document.addEventListener("DOMContentLoaded", wireResetAccountButton);
+
 function renderOpenPositions() {
   const el = document.getElementById("open-positions");
   const trades = dataCache.recentTrades;

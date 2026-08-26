@@ -201,7 +201,10 @@
       <!-- ============ GRAHA 2.0 (PAPER TRADING) ============ -->
       <section class="tab-pane" id="tab-trading">
         <div class="panel">
-          <h2>Graha 2.0 — Paper Trading Bot</h2>
+          <div class="panel-head-row">
+            <h2>Graha 2.0 — Paper Trading Bot</h2>
+            <button class="ghost" id="reset-account-btn">Reset account</button>
+          </div>
           <div class="trading-stats-row">
             <div class="stat-tile">
               <div class="stat-label">Cash</div>
@@ -221,6 +224,20 @@
             <div class="goal-track-bar"><div class="goal-track-fill" id="goal-track-fill"></div></div>
           </div>
           <div id="equity-sparkline" class="sparkline-wrap"></div>
+        </div>
+
+        <div class="modal-backdrop" id="reset-account-modal" hidden>
+          <div class="modal-panel">
+            <button type="button" class="ghost modal-close" id="reset-account-cancel">Close</button>
+            <h3>Reset Graha 2.0 account</h3>
+            <p class="empty-note">This permanently deletes every open position and closed trade in your paper-trading history and sets your cash to a new starting amount. This cannot be undone.</p>
+            <form id="reset-account-form" class="form-row" style="flex-direction: column; align-items: stretch;">
+              <label for="reset-account-cash">New starting capital ($)</label>
+              <input type="number" id="reset-account-cash" min="1" step="0.01" value="20000" required>
+              <div class="form-error" id="reset-account-error"></div>
+              <button type="submit">Confirm reset</button>
+            </form>
+          </div>
         </div>
         <div class="panel">
           <h2>Open Positions</h2>

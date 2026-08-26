@@ -294,6 +294,10 @@ button.ghost { background: transparent; color: var(--link); border: 1px solid va
 button.ghost:hover { color: #fff; background: var(--link); border-color: var(--link); }
 .form-row { display: flex; gap: 8px; margin-bottom: 8px; }
 .form-row input { flex: 1; min-width: 0; }
+.form-error { color: var(--bearish); font-size: 12px; min-height: 16px; }
+
+.panel-head-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.panel-head-row h2 { margin: 0; }
 
 .holding {
   display: flex; justify-content: space-between; align-items: center;
