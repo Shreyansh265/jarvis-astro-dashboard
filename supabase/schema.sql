@@ -593,3 +593,62 @@ end;
 $$;
 drop trigger if exists on_auth_user_created on auth.users;
 create trigger on_auth_user_created after insert on auth.users for each row execute function handle_new_user();
+
+-- ===================================================================
+-- Epic 4 Commit 8: admin-only login history, for lazy client-side
+-- IP -> city/country resolution on the admin Overview tab.
+--
+-- auth.audit_log_entries is Supabase Auth's (GoTrue's) own login audit
+-- table -- not exposed over PostgREST by default (only `public` is),
+-- and not something a plain RLS policy can be attached to since we
+-- don't own it. This narrow security definer RPC is the only way to
+-- read from it at all, and it re-checks is_admin_user() itself before
+-- touching auth data, same as every other admin RPC in this file.
+--
+-- Schema being relied on here (instance_id uuid, id uuid, payload json,
+-- created_at timestamptz, ip_address varchar) has been stable across
+-- GoTrue's history; login events carry
+-- payload = {"action":"login","actor_id":"<uuid>","actor_username":"<email>",...}.
+-- Verify this actually matches (SELECT * FROM auth.audit_log_entries
+-- LIMIT 5 in the SQL Editor) after running this migration --
+-- flagged explicitly rather than assumed, since this is the one piece
+-- of this schema we don't control.
+create or replace function admin_recent_logins(limit_count int default 500)
+returns table (
+  user_id uuid,
+  email text,
+  ip_address text,
+  logged_in_at timestamptz
+)
+language plpgsql security definer set search_path = public as $$
+begin
+  if not is_admin_user() then
+    raise exception 'not authorized';
+  end if;
+
+  return query
+    select
+      (a.payload->>'actor_id')::uuid,
+      a.payload->>'actor_username',
+      nullif(a.ip_address, ''),
+      a.created_at
+    from auth.audit_log_entries a
+    where a.payload->>'action' = 'login'
+    order by a.created_at desc
+    limit limit_count;
+end;
+$$;
+revoke all on function admin_recent_logins(int) from public;
+grant execute on function admin_recent_logins(int) to authenticated;
+
+-- ===================================================================
+-- Epic 4 Commit 9: This Week's Signals plain-language rewrite.
+-- Separate column from long_term_note (astrological prose) and reasons
+-- (astrological bullet fragments) -- the plain-language version is a
+-- distinct, jargon-free explanation of the SAME underlying reasoning,
+-- shown as the primary content on each sector card, with the original
+-- astrological reasoning demoted to an on-demand expand rather than
+-- deleted (see plain_language.py for why: hiding that this is
+-- astrology-driven would contradict the project's own honesty-first
+-- disclaimer).
+alter table predictions add column if not exists plain_language_note text;
