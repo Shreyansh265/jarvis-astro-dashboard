@@ -1,3 +1,22 @@
+// Escapes untrusted third-party text (e.g. news headlines from Finnhub)
+// before it's interpolated into an innerHTML template string elsewhere in
+// this file -- cheaper than restructuring every render function to safe
+// DOM construction, and sufficient for content that's just displayed
+// inline, not treated as trusted markup.
+function escapeHtml(s) {
+  return String(s == null ? "" : s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+}
+// Refuses to render a link href unless it's actually http(s) -- blocks a
+// javascript: or data: URI smuggled in through third-party news data.
+function safeHttpUrl(url) {
+  try {
+    const u = new URL(url, window.location.href);
+    return (u.protocol === "http:" || u.protocol === "https:") ? u.href : "#";
+  } catch (_) {
+    return "#";
+  }
+}
+
 const dataCache = {
   latestLog: null,
   latestPredictions: [],
@@ -308,8 +327,8 @@ function openStockDetail(ticker) {
       <div class="holding-meta">as of ${newsAsOf}</div>
       ${newsItems.length ? newsItems.map(n => `
         <div class="news-item">
-          <a href="${n.url}" target="_blank" rel="noopener">${n.headline}</a>
-          <div class="holding-meta">${n.source || ""}</div>
+          <a href="${escapeHtml(safeHttpUrl(n.url))}" target="_blank" rel="noopener">${escapeHtml(n.headline)}</a>
+          <div class="holding-meta">${escapeHtml(n.source || "")}</div>
         </div>
       `).join("") : `<p class="empty-note">No recent news available.</p>`}
     </div>
@@ -368,10 +387,25 @@ async function sendChat(e) {
 }
 
 function appendChatMsg(role, text) {
+  // Built via safe DOM methods (textContent, not innerHTML string
+  // interpolation) -- chat messages are user-authored, and once Ask
+  // Graha is LLM-backed, agent replies are free-form generated text too.
+  // Neither should ever be treated as trusted HTML.
   const log = document.getElementById("chat-log");
   const div = document.createElement("div");
   div.className = `chat-msg ${role}`;
-  div.innerHTML = `<span class="role">${role === "user" ? "you" : "graha"}</span>${text.replace(/\n/g, "<br>")}`;
+
+  const roleSpan = document.createElement("span");
+  roleSpan.className = "role";
+  roleSpan.textContent = role === "user" ? "you" : "graha";
+  div.appendChild(roleSpan);
+
+  const lines = String(text).split("\n");
+  lines.forEach((line, i) => {
+    div.appendChild(document.createTextNode(line));
+    if (i < lines.length - 1) div.appendChild(document.createElement("br"));
+  });
+
   log.appendChild(div);
   log.scrollTop = log.scrollHeight;
 }
@@ -396,6 +430,8 @@ document.addEventListener("DOMContentLoaded", () => {
   document.getElementById("stock-detail-backdrop").addEventListener("click", (e) => {
     if (e.target.id === "stock-detail-backdrop") closeStockDetail();
   });
-  loadAll();
-  loadChatHistory();
+  // loadAll()/loadChatHistory() are no longer called here -- the whole
+  // dashboard is gated behind sign-in now (see auth-gate.js), which
+  // calls them itself only once a real session (and non-banned account)
+  // is confirmed.
 });

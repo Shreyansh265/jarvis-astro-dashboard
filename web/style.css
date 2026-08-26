@@ -33,6 +33,22 @@ body {
 
 .wrap { max-width: 1500px; margin: 0 auto; padding: 28px 24px 80px; }
 
+/* ---------- Auth gate ---------- */
+.auth-gate {
+  min-height: 100vh; display: flex; align-items: center; justify-content: center;
+  padding: 24px;
+}
+.auth-card {
+  background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius);
+  box-shadow: var(--shadow-card); padding: 32px; max-width: 420px; width: 100%; text-align: center;
+}
+.auth-card .masthead-title { display: block; margin-bottom: 6px; }
+.auth-tabs { display: flex; justify-content: center; gap: 4px; margin: 16px 0; border-bottom: 1px solid var(--border); }
+.auth-card form { text-align: left; margin-top: 16px; }
+.auth-card .form-row { display: block; margin-bottom: 10px; }
+.auth-card .form-row input { width: 100%; }
+#signin-error, #signup-error { color: var(--bearish); font-style: normal; }
+
 /* ---------- Header ---------- */
 header.masthead {
   display: flex; align-items: center; justify-content: space-between;
