@@ -35,11 +35,28 @@ function renderHorizonPicks() {
   }
 }
 
+function _multiline(text) {
+  return escapeHtml(text).replace(/\n+/g, "<br>");
+}
+
 function renderSectorCards() {
   const el = document.getElementById("sector-grid");
   const preds = dataCache.latestPredictions;
   if (!preds.length) { el.innerHTML = `<p class="empty-note">No signals logged yet — the daily job runs automatically on market days, or trigger it manually from the repo's Actions tab.</p>`; return; }
-  el.innerHTML = preds.map((p, i) => `
+  el.innerHTML = preds.map((p, i) => {
+    // plain_language_note (Claude, plain English, no astrology jargon) is
+    // the primary explanation now -- the original astrological reasons/
+    // long_term_note are demoted to an on-demand toggle, not deleted
+    // (hiding that this is astrology-driven would contradict the
+    // project's own honesty-first disclaimer). Falls back to the raw
+    // reasons preview when plain_language_note isn't there yet (neutral
+    // sector, or ANTHROPIC_API_KEY not configured yet).
+    const primaryText = p.plain_language_note
+      ? _multiline(p.plain_language_note)
+      : escapeHtml((p.reasons || []).slice(0, 2).join(" · "));
+    const hasAstroDetail = (p.reasons && p.reasons.length) || p.long_term_note;
+
+    return `
     <div class="sector-card ${p.direction}">
       <div class="sector-card-top">
         <span class="sector-name">${p.sector.replace(/_/g, " ")}</span>
@@ -47,19 +64,23 @@ function renderSectorCards() {
       </div>
       <div class="sector-direction ${p.direction}">${p.direction} · ${p.possibility_indicator}%</div>
       <div class="possibility-bar-track"><div class="possibility-bar-fill" style="width:${p.possibility_indicator}%"></div></div>
-      <div class="sector-reason">${(p.reasons || []).slice(0, 2).join(" · ")}</div>
-      ${p.long_term_note ? `
-        <button class="ghost read-more-btn" data-read-more="${i}">read more — the long-term case</button>
-        <div class="long-term-note" id="long-term-note-${i}" hidden>${p.long_term_note}</div>
+      <div class="sector-reason">${primaryText}</div>
+      ${hasAstroDetail ? `
+        <button class="ghost read-more-btn" data-astro-toggle="${i}">show the astrological reasoning</button>
+        <div class="long-term-note" id="astro-detail-${i}" hidden>
+          ${p.reasons && p.reasons.length ? `<div class="sector-reason">${escapeHtml(p.reasons.join(" · "))}</div>` : ""}
+          ${p.long_term_note ? `<div style="margin-top:8px">${_multiline(p.long_term_note)}</div>` : ""}
+        </div>
       ` : ""}
     </div>
-  `).join("");
+  `;
+  }).join("");
 
-  el.querySelectorAll("[data-read-more]").forEach(btn => {
+  el.querySelectorAll("[data-astro-toggle]").forEach(btn => {
     btn.addEventListener("click", () => {
-      const note = document.getElementById(`long-term-note-${btn.dataset.readMore}`);
+      const note = document.getElementById(`astro-detail-${btn.dataset.astroToggle}`);
       note.hidden = !note.hidden;
-      btn.textContent = note.hidden ? "read more — the long-term case" : "show less";
+      btn.textContent = note.hidden ? "show the astrological reasoning" : "hide the astrological reasoning";
     });
   });
 }

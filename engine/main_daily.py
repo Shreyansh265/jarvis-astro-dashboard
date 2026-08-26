@@ -29,6 +29,7 @@ import market_watch
 import eli5
 import paper_trader
 import historical_analog
+import plain_language
 import qqq_daily_call
 
 
@@ -79,12 +80,21 @@ def main():
             print(f"historical_analog failed for {sector}: {e}")
             long_term_note = None
 
+        try:
+            plain_language_note = plain_language.build_plain_language_note(
+                sector, ticker, sig["direction"], sig["reasons"], long_term_note,
+            )
+        except Exception as e:
+            print(f"plain_language failed for {sector}: {e}")
+            plain_language_note = None
+
         db.upsert("predictions", {
             "date": today, "sector": sector, "ticker": ticker,
             "direction": sig["direction"],
             "possibility_indicator": sig["possibility_indicator"],
             "reasons": sig["reasons"], "contributing_planets": sig["contributing_planets"],
             "price_at_prediction": price, "long_term_note": long_term_note,
+            "plain_language_note": plain_language_note,
         }, on_conflict="date,sector")
         predictions_logged += 1
 
