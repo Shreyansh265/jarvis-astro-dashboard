@@ -399,3 +399,197 @@ create table if not exists qqq_daily_call (
 alter table qqq_daily_call enable row level security;
 drop policy if exists "public read qqq_daily_call" on qqq_daily_call;
 create policy "public read qqq_daily_call" on qqq_daily_call for select using (true);
+
+-- ===================================================================
+-- Epic 4 additions (multi-user auth, admin, per-user Portfolio/Graha 2.0)
+-- Also idempotent. IMPORTANT: this whole block (profiles/admin/ban
+-- infrastructure AND the multi-tenant migration below it) must be
+-- applied TOGETHER in one run of this file -- the signup trigger below
+-- references paper_account.user_id, which the migration section adds.
+-- Pasting only part of this block risks a broken signup if someone
+-- signs up before the rest lands.
+--
+-- NOTE on existing data: rows already in portfolio/paper_account/
+-- paper_trades/equity_history/chat_log from before this migration have
+-- no user_id and become invisible under the new RLS policies (not
+-- deleted, just unowned). If you want your existing paper-trading
+-- history/portfolio attributed to your new account once you've signed
+-- up, that's a one-time manual UPDATE using your new auth uid -- ask
+-- and it can be done, not automated here since your uid doesn't exist
+-- until you actually sign up.
+-- ===================================================================
+
+-- ---------- profiles, admin bootstrapping, ban infrastructure ----------
+
+create table if not exists profiles (
+    id uuid primary key references auth.users(id) on delete cascade,
+    email text not null,
+    is_admin boolean not null default false,
+    is_banned boolean not null default false,
+    created_at timestamptz not null default now()
+);
+alter table profiles enable row level security;
+
+-- SELECT only -- no INSERT/UPDATE/DELETE policy for anyone, including
+-- admins. A row-level UPDATE policy can't restrict which COLUMNS a
+-- permitted UPDATE touches, so even an admin-scoped UPDATE policy would
+-- be a path to writing is_admin/is_banned on an arbitrary row (including
+-- one's own). All writes to this table go through the security definer
+-- RPCs below, which do their own explicit checks, instead.
+drop policy if exists "profiles_select_own" on profiles;
+create policy "profiles_select_own" on profiles for select to authenticated using (id = auth.uid());
+
+create or replace function is_admin_user() returns boolean
+language sql security definer set search_path = public stable as $$
+  select coalesce((select is_admin from profiles where id = auth.uid()), false);
+$$;
+revoke all on function is_admin_user() from public;
+grant execute on function is_admin_user() to authenticated;
+
+drop policy if exists "profiles_select_admin" on profiles;
+create policy "profiles_select_admin" on profiles for select to authenticated using (is_admin_user());
+
+create or replace function current_user_is_banned() returns boolean
+language sql security definer set search_path = public stable as $$
+  select coalesce((select is_banned from profiles where id = auth.uid()), false);
+$$;
+revoke all on function current_user_is_banned() from public;
+grant execute on function current_user_is_banned() to authenticated;
+
+-- The only way is_banned ever changes. Deliberately narrow: admin cannot
+-- ban themselves (would lock out the only admin seat), and there is no
+-- function anywhere that lets a caller grant is_admin at all -- promoting
+-- the one admin account is a manual one-time SQL statement (see project
+-- setup notes), never exposed via any API surface.
+create or replace function admin_set_banned(target_user_id uuid, banned boolean) returns void
+language plpgsql security definer set search_path = public as $$
+begin
+  if not is_admin_user() then
+    raise exception 'not authorized';
+  end if;
+  if target_user_id = auth.uid() then
+    raise exception 'admin cannot ban self';
+  end if;
+  update profiles set is_banned = banned where id = target_user_id;
+end;
+$$;
+revoke all on function admin_set_banned(uuid, boolean) from public;
+grant execute on function admin_set_banned(uuid, boolean) to authenticated;
+
+-- ---------- multi-tenancy migration on the 5 personal tables ----------
+-- Each of these previously had a single global "public write" policy
+-- (fine for a single-user dashboard, not once multiple accounts exist).
+-- Dropped explicitly by name below, not left in place alongside the new
+-- ones -- Postgres RLS policies are OR'd together, so a stale permissive
+-- policy would silently defeat the whole isolation effort.
+
+alter table portfolio add column if not exists user_id uuid references auth.users(id);
+alter table paper_account add column if not exists user_id uuid references auth.users(id);
+alter table paper_trades add column if not exists user_id uuid references auth.users(id);
+alter table equity_history add column if not exists user_id uuid references auth.users(id);
+alter table chat_log add column if not exists user_id uuid references auth.users(id);
+
+drop policy if exists "public read portfolio" on portfolio;
+drop policy if exists "public write portfolio" on portfolio;
+drop policy if exists "public update portfolio" on portfolio;
+drop policy if exists "public delete portfolio" on portfolio;
+drop policy if exists "portfolio_own" on portfolio;
+create policy "portfolio_own" on portfolio for all to authenticated
+  using (auth.uid() = user_id and not current_user_is_banned())
+  with check (auth.uid() = user_id and not current_user_is_banned());
+
+drop policy if exists "public read paper_account" on paper_account;
+drop policy if exists "paper_account_own" on paper_account;
+create policy "paper_account_own" on paper_account for all to authenticated
+  using (auth.uid() = user_id and not current_user_is_banned())
+  with check (auth.uid() = user_id and not current_user_is_banned());
+
+drop policy if exists "public read paper_trades" on paper_trades;
+drop policy if exists "paper_trades_own" on paper_trades;
+create policy "paper_trades_own" on paper_trades for all to authenticated
+  using (auth.uid() = user_id and not current_user_is_banned())
+  with check (auth.uid() = user_id and not current_user_is_banned());
+
+drop policy if exists "public read equity_history" on equity_history;
+drop policy if exists "equity_history_own" on equity_history;
+create policy "equity_history_own" on equity_history for all to authenticated
+  using (auth.uid() = user_id and not current_user_is_banned())
+  with check (auth.uid() = user_id and not current_user_is_banned());
+
+drop policy if exists "public read chat_log" on chat_log;
+drop policy if exists "public write chat_log" on chat_log;
+drop policy if exists "chat_log_own" on chat_log;
+create policy "chat_log_own" on chat_log for all to authenticated
+  using (auth.uid() = user_id and not current_user_is_banned())
+  with check (auth.uid() = user_id and not current_user_is_banned());
+
+-- equity_history had a global `date unique` constraint -- fine for one
+-- shared account, a guaranteed collision the moment a second user's
+-- first same-day write happens. Widen it to (user_id, date). Constraint
+-- name may differ from the guess below depending on how Postgres named
+-- it originally -- verify against pg_constraint before relying on this
+-- dropping cleanly.
+alter table equity_history drop constraint if exists equity_history_date_key;
+create unique index if not exists equity_history_user_date_uidx on equity_history(user_id, date);
+
+-- paper_account: one row per user now, not a single global row.
+create unique index if not exists paper_account_user_uidx on paper_account(user_id);
+
+-- Cheap integrity backstop: a linked close can never point to a
+-- different user's opening trade.
+create or replace function check_linked_trade_same_user() returns trigger
+language plpgsql as $$
+declare
+  opener_user_id uuid;
+begin
+  if new.linked_buy_trade_id is not null then
+    select user_id into opener_user_id from paper_trades where id = new.linked_buy_trade_id;
+    if opener_user_id is not null and opener_user_id != new.user_id then
+      raise exception 'linked_buy_trade_id must belong to the same user';
+    end if;
+  end if;
+  return new;
+end;
+$$;
+drop trigger if exists paper_trades_same_user_link on paper_trades;
+create trigger paper_trades_same_user_link before insert or update on paper_trades
+  for each row execute function check_linked_trade_same_user();
+
+-- Reset Graha 2.0 to a fresh, user-chosen starting capital. security
+-- invoker (not definer) -- no elevated privilege needed, this is the
+-- caller mutating only their own already-RLS-scoped rows. Wrapped in one
+-- function so all three effects land atomically instead of three
+-- separate REST calls that could leave a half-reset account on a
+-- network blip.
+create or replace function reset_paper_account(new_cash numeric) returns void
+language plpgsql security invoker set search_path = public as $$
+begin
+  delete from paper_trades where user_id = auth.uid();
+  delete from equity_history where user_id = auth.uid();
+  update paper_account set cash = new_cash where user_id = auth.uid();
+end;
+$$;
+
+-- Auto-provisions a profile + a fresh $20,000 paper_account on signup.
+-- Deliberately NEVER auto-grants admin by email match -- an auto-grant
+-- trigger is exploitable (someone could sign up with the intended
+-- admin's email before the real owner does, since Supabase creates the
+-- auth.users row before email confirmation completes). Every new signup
+-- is a plain user; the real admin is promoted once, manually, after
+-- confirming their own account:
+--   1. Sign up for a real account with your admin email through the
+--      dashboard's new login page, like any other user, and confirm it.
+--   2. Run once, in the SQL Editor:
+--      update profiles set is_admin = true where email = 'YOUR_ADMIN_EMAIL';
+-- This is deliberately a manual step -- there is no code path, anywhere,
+-- that can grant is_admin from the API.
+create or replace function handle_new_user() returns trigger
+language plpgsql security definer set search_path = public as $$
+begin
+  insert into profiles (id, email) values (new.id, new.email) on conflict do nothing;
+  insert into paper_account (user_id, cash) values (new.id, 20000) on conflict do nothing;
+  return new;
+end;
+$$;
+drop trigger if exists on_auth_user_created on auth.users;
+create trigger on_auth_user_created after insert on auth.users for each row execute function handle_new_user();
