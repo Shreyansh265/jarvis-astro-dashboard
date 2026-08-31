@@ -483,11 +483,32 @@ grant execute on function admin_set_banned(uuid, boolean) to authenticated;
 -- ones -- Postgres RLS policies are OR'd together, so a stale permissive
 -- policy would silently defeat the whole isolation effort.
 
-alter table portfolio add column if not exists user_id uuid references auth.users(id);
-alter table paper_account add column if not exists user_id uuid references auth.users(id);
-alter table paper_trades add column if not exists user_id uuid references auth.users(id);
-alter table equity_history add column if not exists user_id uuid references auth.users(id);
-alter table chat_log add column if not exists user_id uuid references auth.users(id);
+alter table portfolio add column if not exists user_id uuid references auth.users(id) on delete cascade;
+alter table paper_account add column if not exists user_id uuid references auth.users(id) on delete cascade;
+alter table paper_trades add column if not exists user_id uuid references auth.users(id) on delete cascade;
+alter table equity_history add column if not exists user_id uuid references auth.users(id) on delete cascade;
+alter table chat_log add column if not exists user_id uuid references auth.users(id) on delete cascade;
+
+-- Bug fix: the 5 ADD COLUMN statements above originally had no `on delete
+-- cascade` (unlike profiles.id, which did) -- `add column if not exists`
+-- is a no-op on a column that already exists, so a project that already
+-- ran this migration keeps the un-cascaded constraint forever unless it's
+-- explicitly fixed here. Concrete symptom this caused: deleting a user
+-- from Authentication -> Users failed with a generic "Failed to delete
+-- selected users" once that user had even one paper_account row (created
+-- automatically on signup by handle_new_user() below) -- a foreign key
+-- violation the dashboard doesn't surface clearly. Constraint names below
+-- are Postgres's default auto-generated <table>_<column>_fkey.
+alter table portfolio drop constraint if exists portfolio_user_id_fkey;
+alter table portfolio add constraint portfolio_user_id_fkey foreign key (user_id) references auth.users(id) on delete cascade;
+alter table paper_account drop constraint if exists paper_account_user_id_fkey;
+alter table paper_account add constraint paper_account_user_id_fkey foreign key (user_id) references auth.users(id) on delete cascade;
+alter table paper_trades drop constraint if exists paper_trades_user_id_fkey;
+alter table paper_trades add constraint paper_trades_user_id_fkey foreign key (user_id) references auth.users(id) on delete cascade;
+alter table equity_history drop constraint if exists equity_history_user_id_fkey;
+alter table equity_history add constraint equity_history_user_id_fkey foreign key (user_id) references auth.users(id) on delete cascade;
+alter table chat_log drop constraint if exists chat_log_user_id_fkey;
+alter table chat_log add constraint chat_log_user_id_fkey foreign key (user_id) references auth.users(id) on delete cascade;
 
 drop policy if exists "public read portfolio" on portfolio;
 drop policy if exists "public write portfolio" on portfolio;
