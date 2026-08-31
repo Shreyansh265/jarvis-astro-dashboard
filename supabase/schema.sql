@@ -656,29 +656,42 @@ alter table predictions add column if not exists plain_language_note text;
 -- ===================================================================
 -- Epic 4 Commit 7: welcome email on signup.
 --
--- This is a Database Webhook (fires server-side on `profiles` INSERT,
--- regardless of what the browser does after signup succeeds) --
--- deliberately NOT run here as real SQL, and deliberately not
--- automated via GitHub Actions like everything else in this file,
--- because the trigger's arguments must include the shared secret that
--- guards supabase/functions/send-welcome-email/index.ts (that function
--- has verify_jwt off, so this header is the only thing stopping it
--- being a public mail-relay endpoint) -- and this file is public.
+-- Fires server-side on `profiles` INSERT (regardless of what the browser
+-- does after signup succeeds) via pg_net -- a lower-level extension than
+-- the dashboard's "Database Webhooks" feature (supabase_functions.
+-- http_request()), used here instead because that feature's schema is
+-- only auto-provisioned the first time the Webhooks page is opened in
+-- the dashboard, which this project's project hadn't done; pg_net is the
+-- same underlying mechanism Database Webhooks is built on, just called
+-- directly. Safe/non-secret, so enabled for real here:
+create extension if not exists pg_net;
+
+-- The function body itself is deliberately NOT created here as real SQL
+-- (only documented, with a placeholder secret) -- it must embed the
+-- shared secret that guards supabase/functions/send-welcome-email/
+-- index.ts (that function has verify_jwt off, so this header is the
+-- only thing stopping it being a public mail-relay endpoint), and this
+-- file is public.
 --
--- One-time manual step: run this once in the SQL Editor (or configure
--- the equivalent under Database -> Webhooks in the dashboard), with
+-- One-time manual step: run this once in the SQL Editor, with
 -- YOUR_WEBHOOK_SECRET replaced by the real value of the
 -- WEBHOOK_SHARED_SECRET Edge Function secret (Project Settings ->
 -- Edge Functions -> Secrets):
 --
+-- create or replace function notify_welcome_email() returns trigger
+-- language plpgsql security definer set search_path = public as $$
+-- begin
+--   perform net.http_post(
+--     url := 'https://<project-ref>.supabase.co/functions/v1/send-welcome-email',
+--     body := jsonb_build_object('record', jsonb_build_object('email', new.email)),
+--     headers := jsonb_build_object('Content-Type', 'application/json', 'x-webhook-secret', 'YOUR_WEBHOOK_SECRET')
+--   );
+--   return new;
+-- exception when others then
+--   return new; -- a failed email notification must never block signup
+-- end;
+-- $$;
 -- drop trigger if exists welcome_email_webhook on public.profiles;
 -- create trigger welcome_email_webhook
 -- after insert on public.profiles
--- for each row
--- execute function supabase_functions.http_request(
---   'https://<project-ref>.supabase.co/functions/v1/send-welcome-email',
---   'POST',
---   '{"Content-type":"application/json","x-webhook-secret":"YOUR_WEBHOOK_SECRET"}',
---   '{}',
---   '5000'
--- );
+-- for each row execute function notify_welcome_email();
