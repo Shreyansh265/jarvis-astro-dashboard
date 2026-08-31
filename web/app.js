@@ -381,7 +381,16 @@ async function sendChat(e) {
   appendChatMsg("user", text);
   try { await SB.insert("chat_log", { role: "user", message: text }); } catch (_) {}
 
-  const reply = await ChatEngine.ask(text, dataCache);
+  let reply;
+  try {
+    reply = await ChatEngine.ask(text);
+  } catch (err) {
+    // Network/auth/rate-limit/not-yet-configured errors from the chat
+    // Edge Function all land here -- shown in the log, not written to
+    // chat_log (it's not a real reply from Graha).
+    appendChatMsg("agent", err.message || "Something went wrong reaching Graha — try again in a moment.");
+    return;
+  }
   appendChatMsg("agent", reply);
   try { await SB.insert("chat_log", { role: "agent", message: reply }); } catch (_) {}
 }

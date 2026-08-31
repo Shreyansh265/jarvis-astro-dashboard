@@ -1,0 +1,15 @@
+# Only used to configure per-function deploy settings (this project has no
+# local Supabase dev stack -- everything else is verified live via the
+# GitHub Actions + Supabase REST pattern used throughout this repo).
+
+[functions.chat]
+# Default (true) -- Supabase's own gateway rejects any request without a
+# valid signed-in user's JWT before this function's code even runs.
+verify_jwt = true
+
+[functions.send-welcome-email]
+# Off deliberately -- this function is invoked by a Database Webhook
+# (service-to-service), not a signed-in browser, so there's no user JWT
+# to verify. See the function's own header comment for what guards this
+# URL instead (a shared-secret header, checked first).
+verify_jwt = false
