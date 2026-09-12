@@ -38,6 +38,14 @@ body {
   min-height: 100vh; display: flex; align-items: center; justify-content: center;
   padding: 24px;
 }
+/* `.auth-gate`'s own `display: flex` (an author rule) beats the browser's
+   default `[hidden] { display: none }` (a user-agent rule) even at equal
+   selector specificity, because author styles always win that cascade tie
+   -- so hidden=true on this element was rendering it anyway. This is the
+   actual root cause of "sign in does nothing" after a successful login:
+   the dashboard *was* revealing correctly underneath, just with the
+   auth gate still drawn on top of it. */
+.auth-gate[hidden] { display: none; }
 .auth-card {
   background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius);
   box-shadow: var(--shadow-card); padding: 32px; max-width: 420px; width: 100%; text-align: center;
