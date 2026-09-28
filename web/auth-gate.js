@@ -80,13 +80,25 @@ document.addEventListener("DOMContentLoaded", () => {
     e.preventDefault();
     const errEl = document.getElementById("signup-error");
     errEl.textContent = "";
+
+    const password = document.getElementById("signup-password").value;
+    const passwordConfirm = document.getElementById("signup-password-confirm").value;
+    if (password !== passwordConfirm) {
+      errEl.textContent = "Passwords don't match.";
+      return;
+    }
+
     try {
       const data = await window.Auth.signUp(
         document.getElementById("signup-email").value.trim(),
-        document.getElementById("signup-password").value,
+        password,
       );
       if (data.session) {
-        // Email confirmation is disabled on this project -- signed in immediately.
+        // signUp() returns a session immediately when email confirmation is
+        // off (mailer_autoconfirm) -- when it's on, data.session is null
+        // here and the "check your email" branch below runs instead. Which
+        // one happens is a Supabase project setting, not something this
+        // file decides.
         return;
       }
       document.getElementById("signup-form").hidden = true;
