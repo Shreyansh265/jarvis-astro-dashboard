@@ -61,6 +61,15 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   });
 
+  document.querySelectorAll("[data-password-toggle]").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const input = document.getElementById(btn.dataset.passwordToggle);
+      const showing = input.type === "text";
+      input.type = showing ? "password" : "text";
+      btn.textContent = showing ? "Show" : "Hide";
+    });
+  });
+
   document.getElementById("signin-form").addEventListener("submit", async (e) => {
     e.preventDefault();
     const errEl = document.getElementById("signin-error");

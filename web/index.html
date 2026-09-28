@@ -22,15 +22,24 @@
 
     <form id="signin-form" hidden>
       <div class="form-row"><input id="signin-email" type="email" placeholder="Email" required autocomplete="username"></div>
-      <div class="form-row"><input id="signin-password" type="password" placeholder="Password" required autocomplete="current-password"></div>
+      <div class="form-row password-field-wrap">
+        <input id="signin-password" type="password" placeholder="Password" required autocomplete="current-password">
+        <button type="button" class="ghost password-toggle-btn" data-password-toggle="signin-password">Show</button>
+      </div>
       <button type="submit" style="width:100%">Sign In</button>
       <p class="empty-note" id="signin-error"></p>
     </form>
 
     <form id="signup-form" hidden>
       <div class="form-row"><input id="signup-email" type="email" placeholder="Email" required autocomplete="username"></div>
-      <div class="form-row"><input id="signup-password" type="password" placeholder="Password (min 6 characters)" required minlength="6" autocomplete="new-password"></div>
-      <div class="form-row"><input id="signup-password-confirm" type="password" placeholder="Confirm password" required minlength="6" autocomplete="new-password"></div>
+      <div class="form-row password-field-wrap">
+        <input id="signup-password" type="password" placeholder="Password (min 6 characters)" required minlength="6" autocomplete="new-password">
+        <button type="button" class="ghost password-toggle-btn" data-password-toggle="signup-password">Show</button>
+      </div>
+      <div class="form-row password-field-wrap">
+        <input id="signup-password-confirm" type="password" placeholder="Confirm password" required minlength="6" autocomplete="new-password">
+        <button type="button" class="ghost password-toggle-btn" data-password-toggle="signup-password-confirm">Show</button>
+      </div>
       <button type="submit" style="width:100%">Create Account</button>
       <p class="empty-note" id="signup-error"></p>
     </form>
