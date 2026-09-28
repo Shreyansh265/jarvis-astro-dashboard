@@ -61,12 +61,25 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   });
 
+  // Crescent (waxing) = password hidden, mirrors the "Show" state; full
+  // moon = fully revealed. Same visual language as the orrery's own
+  // planet/phase glyphs elsewhere on the dashboard, instead of a generic
+  // eye icon.
+  const MOON_CRESCENT = `<svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor" aria-hidden="true"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>`;
+  const MOON_FULL = `<svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor" aria-hidden="true"><circle cx="12" cy="12" r="9"/></svg>`;
+
   document.querySelectorAll("[data-password-toggle]").forEach(btn => {
     btn.addEventListener("click", () => {
       const input = document.getElementById(btn.dataset.passwordToggle);
       const showing = input.type === "text";
       input.type = showing ? "password" : "text";
-      btn.textContent = showing ? "Show" : "Hide";
+      // Static, developer-authored SVG strings -- not user/LLM input, so
+      // innerHTML here is the same trust tier as the rest of this file's
+      // template markup, not the escapeHtml-guarded LLM-output path.
+      btn.innerHTML = showing ? MOON_CRESCENT : MOON_FULL;
+      const label = showing ? "Show password" : "Hide password";
+      btn.setAttribute("aria-label", label);
+      btn.title = label;
     });
   });
 

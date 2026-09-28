@@ -57,7 +57,13 @@ body {
 .auth-card .form-row input { width: 100%; }
 .auth-card .password-field-wrap { display: flex; gap: 8px; }
 .auth-card .password-field-wrap input { flex: 1; min-width: 0; }
-.password-toggle-btn { flex: 0 0 auto; padding: 9px 12px; font-size: 11px; }
+.password-toggle-btn {
+  flex: 0 0 auto; width: 42px; height: 42px; padding: 0;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: 50%;
+}
+.password-toggle-btn svg { display: block; transition: transform 0.2s; }
+.password-toggle-btn:hover svg { transform: rotate(-14deg); }
 #signin-error, #signup-error { color: var(--bearish); font-style: normal; }
 
 /* ---------- Header ---------- */
