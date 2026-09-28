@@ -55,13 +55,15 @@ body {
 .auth-card form { text-align: left; margin-top: 16px; }
 .auth-card .form-row { display: block; margin-bottom: 10px; }
 .auth-card .form-row input { width: 100%; }
-.auth-card .password-field-wrap { display: flex; gap: 8px; }
-.auth-card .password-field-wrap input { flex: 1; min-width: 0; }
+.auth-card .password-field-wrap { position: relative; }
+.auth-card .password-field-wrap input { width: 100%; padding-right: 44px; }
 .password-toggle-btn {
-  flex: 0 0 auto; width: 42px; height: 42px; padding: 0;
+  position: absolute; top: 50%; right: 4px; transform: translateY(-50%);
+  width: 34px; height: 34px; padding: 0;
   display: flex; align-items: center; justify-content: center;
-  border-radius: 50%;
+  border-radius: 50%; background: transparent; border: none; color: var(--link);
 }
+.password-toggle-btn:hover { background: var(--panel-raised); }
 .password-toggle-btn svg { display: block; transition: transform 0.2s; }
 .password-toggle-btn:hover svg { transform: rotate(-14deg); }
 #signin-error, #signup-error { color: var(--bearish); font-style: normal; }
