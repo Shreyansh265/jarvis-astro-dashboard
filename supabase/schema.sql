@@ -716,3 +716,46 @@ create extension if not exists pg_net;
 -- create trigger welcome_email_webhook
 -- after insert on public.profiles
 -- for each row execute function notify_welcome_email();
+
+-- ===================================================================
+-- Bug fix: portfolio/chat_log inserts have been silently failing.
+-- addHolding() and sendChat() (web/app.js) insert into portfolio/
+-- chat_log without ever setting user_id, and neither column had a
+-- DB-side default or an insert trigger to fill it in. Under
+-- portfolio_own/chat_log_own's `with check (auth.uid() = user_id ...)`,
+-- an unset user_id inserts as NULL, and `NULL = auth.uid()` is never
+-- true in SQL -- so every such insert has been rejected by RLS since
+-- the Epic 4 multi-tenant migration. A schema-level default is more
+-- robust than touching every client call site (and can't be forgotten
+-- by a future one) -- same reasoning behind giving stock_watch a
+-- default from the start, below.
+alter table portfolio alter column user_id set default auth.uid();
+alter table chat_log alter column user_id set default auth.uid();
+
+-- ===================================================================
+-- Track a Stock: a single user-chosen ticker (any ticker, not just the
+-- curated SECTOR_TOP_STOCKS list) with a full daily/weekly/monthly/
+-- yearly astro read. One row per user (unique index below) -- adding a
+-- new one is an upsert on user_id, replacing whatever was tracked
+-- before, by design (confirmed with the user: single slot, not a list).
+--
+-- sector is USER-ASSERTED, not auto-detected: Twelve Data's /profile
+-- endpoint (which would return a real sector) is paid-tier-only on the
+-- free plan -- verified live (403 for TSLA/MSFT/GOOGL/AMZN/JPM/NVDA/
+-- PLTR/CIEN; only AAPL worked, inconsistently). There's no free way to
+-- classify an arbitrary ticker automatically, so the person adding it
+-- picks from the 15 real sector names (rulerships.SECTOR_TICKERS) --
+-- disclosed in the UI as their own call, not Graha's.
+create table if not exists stock_watch (
+    id bigint generated always as identity primary key,
+    user_id uuid not null default auth.uid() references auth.users(id) on delete cascade,
+    ticker text not null,
+    sector text not null,
+    added_at timestamptz not null default now()
+);
+alter table stock_watch enable row level security;
+drop policy if exists "stock_watch_own" on stock_watch;
+create policy "stock_watch_own" on stock_watch for all to authenticated
+  using (auth.uid() = user_id and not current_user_is_banned())
+  with check (auth.uid() = user_id and not current_user_is_banned());
+create unique index if not exists stock_watch_user_uidx on stock_watch(user_id);

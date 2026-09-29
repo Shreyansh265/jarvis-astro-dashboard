@@ -1,13 +1,14 @@
 """
 Computes and stores a daily technical + financial + macro-astro + news
-snapshot for every ticker currently in the real Portfolio. Runs POST-
-MARKET-CLOSE as its own workflow, not folded into main_daily.py's pre-
-market run -- two reasons: (1) "why did this move today" is only
-answerable after today happened, and news breaks during the session, so
-a pre-market batch would always be a day stale on exactly the question
-being asked; (2) main_daily.py already has a hard external deadline
-(market open) and has shown real 429s under concurrent-workflow credit
-pressure -- this doesn't belong on that time-sensitive path.
+snapshot for every ticker currently in the real Portfolio, plus every
+user's "Track a Stock" pick (stock_watch). Runs POST-MARKET-CLOSE as its
+own workflow, not folded into main_daily.py's pre-market run -- two
+reasons: (1) "why did this move today" is only answerable after today
+happened, and news breaks during the session, so a pre-market batch
+would always be a day stale on exactly the question being asked; (2)
+main_daily.py already has a hard external deadline (market open) and has
+shown real 429s under concurrent-workflow credit pressure -- this
+doesn't belong on that time-sensitive path.
 
 "Geopolitical analysis" is deliberately reframed here as macro/sector
 astro context (the ticker's sector signal + long_term_note) rather than
@@ -51,15 +52,28 @@ def _reverse_sector_lookup(ticker: str):
     return None
 
 
-def _get_portfolio_tickers() -> list:
-    rows = db.select("portfolio", {"select": "ticker"})
-    return sorted({r["ticker"] for r in rows})
+def _get_tickers() -> list:
+    """Portfolio tickers plus every user's "Track a Stock" pick
+    (stock_watch, one row per user) -- both get the same technical/
+    financial/news computation here. stock_watch.sector is intentionally
+    NOT used for anything in this file: stock_detail is keyed by
+    (ticker, detail_date), not per-user, and stock_watch's sector is a
+    subjective, user-asserted call -- two different users could tag the
+    same arbitrary ticker with two different sectors, and writing that
+    into a shared ticker-keyed table would let one user's guess silently
+    clobber another's. _reverse_sector_lookup() below (curated-only,
+    objective) remains the only source for this file's sector fields;
+    the per-user astro reading for a tracked stock is computed entirely
+    client-side from that user's own stock_watch row instead."""
+    portfolio_rows = db.select("portfolio", {"select": "ticker"})
+    watch_rows = db.select("stock_watch", {"select": "ticker"})
+    return sorted({r["ticker"] for r in portfolio_rows} | {r["ticker"] for r in watch_rows})
 
 
 def run_portfolio_detail() -> list:
     today = date.today().isoformat()
     now = datetime.now(timezone.utc)
-    tickers = _get_portfolio_tickers()
+    tickers = _get_tickers()
     updated = []
 
     for ticker in tickers:

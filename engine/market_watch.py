@@ -33,6 +33,19 @@ def run_market_watch() -> list:
     except Exception as e:
         print(f"market_watch: could not load portfolio tickers: {e}")
 
+    # Same idea for every user's "Track a Stock" pick (stock_watch, one row
+    # per user) -- setdefault() means an earlier block's sector wins if a
+    # tracked ticker happens to already be curated or in someone's
+    # portfolio, which is harmless here (this loop only ever needs the
+    # ticker to fetch a price, not the sector) but worth noting so it's
+    # not mistaken for a bug later.
+    try:
+        watch_rows = db.select("stock_watch", {"select": "ticker"})
+        for row in watch_rows:
+            ticker_sector.setdefault(row["ticker"], "Watchlist")
+    except Exception as e:
+        print(f"market_watch: could not load stock_watch tickers: {e}")
+
     rows = []
     for ticker, sector in ticker_sector.items():
         try:

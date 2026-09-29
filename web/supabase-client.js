@@ -21,6 +21,19 @@ const SB = {
     if (!res.ok) throw new Error(`Supabase insert ${table} failed: ${res.status} ${await res.text()}`);
     return res.json();
   },
+  async upsert(table, row, onConflictColumn) {
+    const url = `${window.JARVIS_CONFIG.SUPABASE_URL}/rest/v1/${table}?on_conflict=${onConflictColumn}`;
+    const res = await fetch(url, {
+      method: "POST",
+      headers: {
+        ...(await SB._headers()), "Content-Type": "application/json",
+        "Prefer": "resolution=merge-duplicates,return=representation",
+      },
+      body: JSON.stringify(row),
+    });
+    if (!res.ok) throw new Error(`Supabase upsert ${table} failed: ${res.status} ${await res.text()}`);
+    return res.json();
+  },
   async update(table, query, patch) {
     const url = `${window.JARVIS_CONFIG.SUPABASE_URL}/rest/v1/${table}?${query}`;
     const res = await fetch(url, {

@@ -39,6 +39,175 @@ function _multiline(text) {
   return escapeHtml(text).replace(/\n+/g, "<br>");
 }
 
+function _formatSector(sector) {
+  return sector.replace(/_/g, " ");
+}
+
+async function _loadHorizonForSector(sector, horizon) {
+  // Deliberately NOT reusing dataCache.horizonPicks here -- it's capped
+  // at 60 rows across ALL horizons/periods combined, so a sector that
+  // last ranked top-3 even a few months back can already be pushed out
+  // of that shared cache, producing a false "never ranked" empty state.
+  // This is a small dedicated query instead: the real most-recent period
+  // this specific sector+horizon ever ranked in, or nothing.
+  const rows = await SB.select("horizon_picks",
+    `sector=eq.${encodeURIComponent(sector)}&horizon=eq.${horizon}&order=period_start.desc&limit=1`);
+  return rows[0] || null;
+}
+
+function _horizonSectionHtml(horizon, label, row) {
+  if (!row) {
+    return `
+      <div class="detail-section">
+        <h3>${label}</h3>
+        <p class="empty-note">Hasn't ranked in Graha's top 3 for the ${horizon} horizon yet — only the 3 strongest sectors get picked each period, so this is normal, not an error.</p>
+      </div>`;
+  }
+  const tone = row.today_tone === "bullish" ? "bullish" : (row.today_tone === "bearish" ? "bearish" : "");
+  return `
+    <div class="detail-section">
+      <h3>${label}</h3>
+      <div class="sector-direction ${tone}">${escapeHtml(row.today_tone || "neutral")}
+        <span class="sample-quality-badge ${row.sample_quality}">${escapeHtml(row.sample_quality)} confidence</span>
+      </div>
+      <div class="sector-reason">Backtested hit-rate ${row.hit_rate != null ? Math.round(row.hit_rate * 100) + "%" : "—"}
+        over ${row.sample_size} independent period(s) · driven by ${escapeHtml(row.planet)} · as of ${row.period_start}</div>
+    </div>`;
+}
+
+async function renderStockWatch() {
+  const watch = dataCache.stockWatch;
+  const form = document.getElementById("stock-watch-form");
+  const summary = document.getElementById("stock-watch-summary");
+  const summaryText = document.getElementById("stock-watch-summary-text");
+  const cardEl = document.getElementById("stock-watch-card");
+
+  if (!watch) {
+    form.hidden = false;
+    summary.hidden = true;
+    cardEl.innerHTML = "";
+    return;
+  }
+
+  form.hidden = true;
+  summary.hidden = false;
+  summaryText.innerHTML = `Currently tracking: <strong>${escapeHtml(watch.ticker)}</strong> (${escapeHtml(_formatSector(watch.sector))})`;
+  cardEl.innerHTML = `<p class="empty-note">Loading full astro reading for ${escapeHtml(watch.ticker)}…</p>`;
+
+  // Daily comes straight from the already-loaded dataCache -- its limit=40
+  // window reliably covers "today" for any of the 15 sectors. Only the
+  // weekly/monthly/yearly lookups need the dedicated scoped queries above.
+  const pred = dataCache.latestPredictions.find(p => p.sector === watch.sector);
+  const snapshot = _latestSnapshot(watch.ticker);
+  // stock_detail's own sector fields are curated-ticker-only and stay
+  // that way (see engine/portfolio_detail.py) -- only its PE/SMA/RSI/news
+  // fields are used here, the astro sections above always come from this
+  // user's own watch.sector, never from stock_detail's sector guess.
+  const detail = dataCache.stockDetails.find(d => d.ticker === watch.ticker);
+
+  let weeklyRow = null, monthlyRow = null, yearlyRow = null;
+  try {
+    [weeklyRow, monthlyRow, yearlyRow] = await Promise.all([
+      _loadHorizonForSector(watch.sector, "weekly"),
+      _loadHorizonForSector(watch.sector, "monthly"),
+      _loadHorizonForSector(watch.sector, "yearly"),
+    ]);
+  } catch (e) {
+    cardEl.innerHTML = `<p class="empty-note">Could not load the weekly/monthly/yearly read: ${escapeHtml(e.message)}</p>`;
+    return;
+  }
+
+  const dailyHtml = pred ? `
+    <div class="detail-section">
+      <h3>Daily</h3>
+      <div class="sector-direction ${pred.direction}">${escapeHtml(pred.direction)} · ${pred.possibility_indicator}%</div>
+      <div class="sector-reason">${pred.plain_language_note ? _multiline(pred.plain_language_note) : escapeHtml((pred.reasons || []).slice(0, 3).join(" · "))}</div>
+    </div>` : `
+    <div class="detail-section">
+      <h3>Daily</h3>
+      <p class="empty-note">No signal logged yet today for this sector — check back after the daily job runs.</p>
+    </div>`;
+
+  const priceHtml = snapshot ? `
+    <div class="detail-stats-row">
+      <div class="stat-tile"><div class="stat-label">Price</div><div class="stat-value">$${snapshot.price}</div></div>
+      <div class="stat-tile"><div class="stat-label">Change</div><div class="stat-value ${snapshot.percent_change >= 0 ? "bullish" : "bearish"}">${snapshot.percent_change != null ? snapshot.percent_change + "%" : "—"}</div></div>
+    </div>` : "";
+
+  const fundamentalsHtml = detail ? `
+    <div class="detail-section">
+      <h3>Technical &amp; Financial</h3>
+      <div class="detail-stats-row">
+        <div class="stat-tile"><div class="stat-label">SMA 20</div><div class="stat-value">${detail.sma_20 ?? "—"}</div></div>
+        <div class="stat-tile"><div class="stat-label">SMA 50</div><div class="stat-value">${detail.sma_50 ?? "—"}</div></div>
+        <div class="stat-tile"><div class="stat-label">RSI 14</div><div class="stat-value">${detail.rsi_14 ?? "—"}</div></div>
+        <div class="stat-tile"><div class="stat-label">P/E</div><div class="stat-value">${detail.pe_ratio ?? "—"}</div></div>
+      </div>
+    </div>` : "";
+
+  cardEl.innerHTML = `
+    <div class="sector-card ${pred ? pred.direction : ""}">
+      <div class="sector-card-top">
+        <span class="sector-name">${escapeHtml(watch.ticker)}</span>
+        <span class="sector-ticker">${escapeHtml(_formatSector(watch.sector))}</span>
+      </div>
+      ${priceHtml}
+      ${dailyHtml}
+      ${_horizonSectionHtml("weekly", "Weekly", weeklyRow)}
+      ${_horizonSectionHtml("monthly", "Monthly", monthlyRow)}
+      ${_horizonSectionHtml("yearly", "Yearly", yearlyRow)}
+      ${fundamentalsHtml}
+    </div>`;
+}
+
+function wireStockWatchForm() {
+  const form = document.getElementById("stock-watch-form");
+  if (!form) return;
+  const changeBtn = document.getElementById("watch-change-btn");
+  const stopBtn = document.getElementById("watch-stop-btn");
+
+  form.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const ticker = document.getElementById("watch-ticker").value.trim().toUpperCase();
+    const sector = document.getElementById("watch-sector").value;
+    if (!ticker || !sector) return;
+    if (dataCache.stockWatch && !confirm(`Replace ${dataCache.stockWatch.ticker} with ${ticker}?`)) return;
+
+    const submitBtn = document.getElementById("watch-submit-btn");
+    submitBtn.disabled = true;
+    try {
+      await SB.upsert("stock_watch", { ticker, sector }, "user_id");
+      form.reset();
+      await loadAll();
+    } catch (err) {
+      alert(`Could not track ${ticker}: ${err.message}`);
+    } finally {
+      submitBtn.disabled = false;
+    }
+  });
+
+  changeBtn.addEventListener("click", () => {
+    const watch = dataCache.stockWatch;
+    document.getElementById("stock-watch-summary").hidden = true;
+    form.hidden = false;
+    if (watch) {
+      document.getElementById("watch-ticker").value = watch.ticker;
+      document.getElementById("watch-sector").value = watch.sector;
+    }
+  });
+
+  stopBtn.addEventListener("click", async () => {
+    if (!confirm("Stop tracking this stock?")) return;
+    try {
+      await SB.del("stock_watch", `user_id=eq.${window.currentUser.id}`);
+      await loadAll();
+    } catch (err) {
+      alert(`Could not stop tracking: ${err.message}`);
+    }
+  });
+}
+document.addEventListener("DOMContentLoaded", wireStockWatchForm);
+
 function renderSectorCards() {
   const el = document.getElementById("sector-grid");
   const preds = dataCache.latestPredictions;

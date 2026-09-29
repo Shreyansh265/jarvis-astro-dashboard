@@ -33,6 +33,7 @@ const dataCache = {
   qqqCalls: [],
   horizonPicks: [],
   stockDetails: [],
+  stockWatch: null,
 };
 
 function daysAgoISO(days) {
@@ -46,7 +47,7 @@ async function loadAll() {
   const [
     latestLog, predictions, portfolio, paperAccount, recentTrades, weeklyReviews,
     suggestedStocks, marketSnapshot, dailyBriefs, ruleWeights, equityHistory, mistakes, qqqCalls,
-    horizonPicks, stockDetails,
+    horizonPicks, stockDetails, stockWatch,
   ] = await Promise.all([
     SB.select("planetary_log", "order=date.desc&limit=1"),
     SB.select("predictions", "order=date.desc,created_at.desc&limit=40"),
@@ -71,6 +72,9 @@ async function loadAll() {
     // full history (there's no need to keep every past day's snapshot
     // loaded client-side for this).
     SB.select("stock_detail", "order=detail_date.desc&limit=200"),
+    // RLS already scopes this to just the caller's own row -- limit=1 is
+    // a safety cap, same as paper_account above, not a real filter.
+    SB.select("stock_watch", "limit=1"),
   ]);
 
   dataCache.latestLog = latestLog[0] || null;
@@ -88,6 +92,7 @@ async function loadAll() {
   dataCache.qqqCalls = qqqCalls;
   dataCache.horizonPicks = horizonPicks;
   dataCache.stockDetails = stockDetails;
+  dataCache.stockWatch = stockWatch[0] || null;
 
   // Dashboard tab
   renderBrief();
@@ -103,6 +108,7 @@ async function loadAll() {
   renderAspects();
 
   // Astro Signals tab
+  renderStockWatch();
   renderHorizonPicks();
   renderAstroStocks();
 

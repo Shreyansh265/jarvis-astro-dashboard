@@ -138,6 +138,47 @@
       <!-- ============ ASTRO SIGNALS ============ -->
       <section class="tab-pane" id="tab-stocks">
         <div class="panel">
+          <h2>Track a Stock — Full Astro Reading</h2>
+          <div class="empty-note movers-note">Pick any one ticker, not just Graha's curated list, and get its daily/weekly/monthly/yearly astrological read in one place. One tracked stock at a time -- adding a new one replaces it. The sector is your own call (Graha's free data plan can't auto-detect it for an arbitrary ticker), used only to pull that sector's real signals for this ticker.</div>
+
+          <form id="stock-watch-form">
+            <div class="form-row">
+              <input id="watch-ticker" placeholder="Ticker (e.g. TSLA)" required>
+              <select id="watch-sector" required>
+                <option value="" disabled selected>Sector</option>
+                <option value="Energy">Energy</option>
+                <option value="Financials">Financials</option>
+                <option value="Technology">Technology</option>
+                <option value="Healthcare">Healthcare</option>
+                <option value="Industrials">Industrials</option>
+                <option value="Materials_Mining">Materials Mining</option>
+                <option value="Consumer_Discretionary">Consumer Discretionary</option>
+                <option value="Consumer_Staples">Consumer Staples</option>
+                <option value="Utilities">Utilities</option>
+                <option value="Real_Estate">Real Estate</option>
+                <option value="Communication_Media">Communication Media</option>
+                <option value="Gold">Gold</option>
+                <option value="Silver">Silver</option>
+                <option value="Canada_Broad">Canada Broad</option>
+                <option value="US_Broad">US Broad</option>
+              </select>
+            </div>
+            <button type="submit" style="width:100%" id="watch-submit-btn">Track this stock</button>
+          </form>
+
+          <div id="stock-watch-summary" hidden>
+            <div class="panel-head-row">
+              <div id="stock-watch-summary-text"></div>
+              <div>
+                <button type="button" class="ghost" id="watch-change-btn">Change</button>
+                <button type="button" class="ghost" id="watch-stop-btn">Stop tracking</button>
+              </div>
+            </div>
+          </div>
+
+          <div id="stock-watch-card"></div>
+        </div>
+        <div class="panel">
           <h2>Best of the Best: Weekly / Monthly / Yearly Picks</h2>
           <div class="empty-note movers-note">Real backtested hit-rate x today's live planetary strength, ranked per horizon. Sample size is shown honestly -- a yearly pick backed by 3-4 independent years of evidence is labeled "low" confidence, not hidden behind a big-looking but overlapping number.</div>
           <div class="horizon-columns">
