@@ -33,7 +33,7 @@ const SECTOR_LABEL = {
 };
 
 const DAY_NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-const weekState = { offset: null, selected: null, pickSector: null, etfCache: {} };
+const weekState = { offset: null, selected: null, pickSector: null, pickQuery: "", etfCache: {} };
 
 function sectorLabel(sector) { return SECTOR_LABEL[sector] || String(sector).replace(/_/g, " "); }
 
@@ -122,7 +122,7 @@ function _rowSummary(sector, dates, idx) {
 function _watchRows() {
   return dataCache.sectorWatch.map(w => ({
     key: `w${w.id}`, id: w.id, sector: w.sector, ticker: w.ticker,
-    stockName: w.ticker ? ((dataCache.sectorUniverse.find(u => u.sector === w.sector && u.ticker === w.ticker) || {}).name || w.ticker) : null,
+    stockName: w.ticker ? _parseKind((dataCache.sectorUniverse.find(u => u.sector === w.sector && u.ticker === w.ticker) || {}).name || w.ticker).label : null,
   }));
 }
 
@@ -178,7 +178,9 @@ function renderWeekTab() {
       <div></div>
     </div>
     ${rows.map(r => {
-      const title = r.ticker ? `${escapeHtml(r.stockName)} <span class="week-ticker">${escapeHtml(r.ticker)}</span>` : escapeHtml(sectorLabel(r.sector));
+      const title = r.ticker
+        ? (r.stockName === r.ticker ? escapeHtml(r.ticker) : `${escapeHtml(r.stockName)} <span class="week-ticker">${escapeHtml(r.ticker)}</span>`)
+        : escapeHtml(sectorLabel(r.sector));
       const sub = r.ticker
         ? `<div class="week-badge">Sector signal applied to ${escapeHtml(r.stockName)} (${escapeHtml(sectorLabel(r.sector))})</div>`
         : `<div class="week-badge week-badge-sector">Whole sector</div>`;
@@ -247,7 +249,7 @@ async function renderWeekDetail(rows, idx) {
   }
   const fr = idx.get(`${r.sector}|${sel.date}`);
   const st = cellState(fr, _dayMeta(sel.date));
-  const name = r.ticker ? `${r.stockName} (${r.ticker})` : sectorLabel(r.sector);
+  const name = r.ticker ? (r.stockName === r.ticker ? r.ticker : `${r.stockName} (${r.ticker})`) : sectorLabel(r.sector);
   const chips = (fr && fr.plain_reasons || []).map(p => `<li class="reason-chip">${escapeHtml(p)}</li>`).join("");
   const astro = (fr && fr.reasons || []);
 
@@ -276,6 +278,81 @@ async function renderWeekDetail(rows, idx) {
   }
 }
 
+// Any ticker a user types must at least look like one (US tickers, BRK.B,
+// spot pairs like XAU/USD). The sector forecast it inherits doesn't depend on
+// the symbol being "real", so this only guards against junk input.
+const TICKER_RE = /^[A-Z0-9.\/^-]{1,12}$/;
+const PICKER_MAX_RESULTS = 40;
+
+// " · ETF" / " · Spot" suffixes (added in rulerships.py) become badges.
+function _parseKind(name) {
+  if (name.endsWith(" · ETF")) return { label: name.slice(0, -6), kind: "ETF" };
+  if (name.endsWith(" · Spot")) return { label: name.slice(0, -7), kind: "Spot price" };
+  return { label: name, kind: null };
+}
+
+// Case-insensitive search over one sector's stocks and funds: exact ticker,
+// ticker prefix, name prefix, then anything containing the text. Typing "etf"
+// lists the funds, "gold" lists everything gold-named, etc.
+function searchUniverse(sector, query) {
+  const all = dataCache.sectorUniverse.filter(u => u.sector === sector);
+  const q = query.trim().toLowerCase();
+  if (!q) return all;
+  const scored = [];
+  for (const u of all) {
+    const t = u.ticker.toLowerCase(), n = u.name.toLowerCase();
+    let score = -1;
+    if (t === q) score = 0;
+    else if (t.startsWith(q)) score = 1;
+    else if (n.startsWith(q)) score = 2;
+    else if (t.includes(q) || n.includes(q)) score = 3;
+    if (score >= 0) scored.push({ u, score });
+  }
+  scored.sort((a, b) => a.score - b.score || a.u.ticker.localeCompare(b.u.ticker));
+  return scored.map(x => x.u);
+}
+
+function renderPickerResults() {
+  const el = document.getElementById("picker-results");
+  const s = weekState.pickSector;
+  if (!el || !s) return;
+  const have = new Set(dataCache.sectorWatch.map(w => `${w.sector}|${w.ticker || ""}`));
+  const q = weekState.pickQuery || "";
+  const hits = searchUniverse(s, q);
+  const shown = hits.slice(0, PICKER_MAX_RESULTS);
+  const total = dataCache.sectorUniverse.filter(u => u.sector === s).length;
+
+  const rows = shown.map(u => {
+    const { label, kind } = _parseKind(u.name);
+    const added = have.has(`${s}|${u.ticker}`);
+    return `<div class="picker-result">
+      <div><span class="picker-result-name">${escapeHtml(label)}</span>
+        <span class="week-ticker">${escapeHtml(u.ticker)}</span>
+        ${kind ? `<span class="picker-kind">${escapeHtml(kind)}</span>` : ""}</div>
+      <button type="button" class="picker-add" data-add-stock="${escapeHtml(u.ticker)}" ${added ? "disabled" : ""}>${added ? "✓ Added" : "+ Add"}</button>
+    </div>`;
+  }).join("");
+
+  // Not in Graha's list? Let the user add the ticker they typed anyway.
+  const typed = q.trim().toUpperCase();
+  const exact = dataCache.sectorUniverse.some(u => u.sector === s && u.ticker.toUpperCase() === typed);
+  const custom = typed && !exact && TICKER_RE.test(typed)
+    ? `<div class="picker-result picker-custom">
+         <div><span class="picker-result-name">Add "${escapeHtml(typed)}" to ${escapeHtml(sectorLabel(s))}</span>
+           <div class="week-badge">Not in Graha's list — your own pick. It will use ${escapeHtml(sectorLabel(s))}'s signal.</div></div>
+         <button type="button" class="picker-add" data-add-stock="${escapeHtml(typed)}" ${have.has(`${s}|${typed}`) ? "disabled" : ""}>${have.has(`${s}|${typed}`) ? "✓ Added" : "+ Add"}</button>
+       </div>` : "";
+
+  const status = !total
+    ? `<div class="empty-note">The stock list loads after the next engine run.</div>`
+    : (q.trim()
+        ? `<div class="empty-note">${hits.length ? `${hits.length} match${hits.length > 1 ? "es" : ""} in ${escapeHtml(sectorLabel(s))}${hits.length > shown.length ? ` (showing the first ${shown.length} — keep typing to narrow it down)` : ""}` : `No match in ${escapeHtml(sectorLabel(s))}'s list.`}</div>`
+        : `<div class="empty-note">${total} stocks &amp; funds in ${escapeHtml(sectorLabel(s))} — type to search, or scroll.</div>`);
+
+  el.innerHTML = `${status}<div class="picker-results-list">${rows}${custom}</div>`;
+  el.querySelectorAll("[data-add-stock]").forEach(b => b.addEventListener("click", () => addWatch(s, b.dataset.addStock)));
+}
+
 function renderSectorPicker() {
   const el = document.getElementById("sector-picker");
   if (!el) return;
@@ -290,26 +367,28 @@ function renderSectorPicker() {
 
   el.querySelectorAll("[data-pick-sector]").forEach(b => b.addEventListener("click", () => {
     weekState.pickSector = weekState.pickSector === b.dataset.pickSector ? null : b.dataset.pickSector;
+    weekState.pickQuery = "";
     renderSectorPicker();
   }));
 
   const chooseEl = document.getElementById("picker-choose");
   const s = weekState.pickSector;
-  if (!s) { chooseEl.innerHTML = `<div class="empty-note">Pick a sector above, then add the whole sector or one specific stock in it.</div>`; return; }
-  const stocks = dataCache.sectorUniverse.filter(u => u.sector === s);
+  if (!s) { chooseEl.innerHTML = `<div class="empty-note">Pick a sector above, then add the whole sector or search for a specific stock or fund in it.</div>`; return; }
   chooseEl.innerHTML = `
     <div class="picker-choose-card">
       <div class="picker-group-label">${escapeHtml(sectorLabel(s))}</div>
       <button type="button" class="picker-add" data-add-sector="${s}" ${have.has(`${s}|`) ? "disabled" : ""}>${have.has(`${s}|`) ? "✓ Whole sector added" : "+ Whole sector"}</button>
-      <div class="picker-stocks">
-        ${stocks.length ? stocks.map(u => `<button type="button" class="picker-chip picker-stock" data-add-stock="${u.ticker}" ${have.has(`${s}|${u.ticker}`) ? "disabled" : ""}>${escapeHtml(u.name)} <span class="week-ticker">${escapeHtml(u.ticker)}</span></button>`).join("")
-          : `<span class="empty-note">Stock list loads after the next engine run.</span>`}
-      </div>
-      <div class="empty-note">A stock uses its sector's signal — Graha doesn't read individual stocks separately.</div>
+      <input id="picker-search" type="search" autocomplete="off" spellcheck="false"
+             placeholder="Search ${escapeHtml(sectorLabel(s))} stocks &amp; ETFs — name or ticker">
+      <div id="picker-results"></div>
+      <div class="empty-note">A stock or fund uses its sector's signal — Graha doesn't read individual stocks separately.</div>
       <div class="form-error" id="picker-error"></div>
     </div>`;
+  const input = document.getElementById("picker-search");
+  input.value = weekState.pickQuery || "";
+  input.addEventListener("input", () => { weekState.pickQuery = input.value; renderPickerResults(); });
   chooseEl.querySelectorAll("[data-add-sector]").forEach(b => b.addEventListener("click", () => addWatch(b.dataset.addSector, null)));
-  chooseEl.querySelectorAll("[data-add-stock]").forEach(b => b.addEventListener("click", () => addWatch(s, b.dataset.addStock)));
+  renderPickerResults();
 }
 
 async function _reloadWatch() {
