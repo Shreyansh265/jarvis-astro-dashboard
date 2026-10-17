@@ -100,6 +100,10 @@ def run_portfolio_detail() -> list:
             quote = data_fetch.get_quote(ticker)
             row["week52_high"] = quote.get("week52_high")
             row["week52_low"] = quote.get("week52_low")
+            # Same quote also feeds Portfolio P&L for tickers outside the
+            # curated watchlist (zero extra credits) -- shown as "as of <date>".
+            db.upsert("portfolio_prices", {"ticker": ticker, "price": quote["price"], "as_of": today},
+                      on_conflict="ticker")
         except Exception as e:
             print(f"portfolio_detail: quote failed for {ticker}: {e}")
 

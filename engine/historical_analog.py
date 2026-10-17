@@ -82,26 +82,55 @@ def _days_left_in_sign(planet: str, planet_data: dict) -> int:
     return max(0, round(degrees_left / abs(effective_speed)))
 
 
-def _historical_outcome_sentence(ticker: str, match_date, planet: str, sign: str, retro: bool) -> str:
+def _historical_outcome(ticker: str, match_date):
+    """Returns (pct_move, days_after, reason). reason is None on success, else a
+    short human-readable explanation of why it couldn't be verified (never
+    silently falls back to a different ticker)."""
     match_str = match_date.strftime("%Y-%m-%d")
     window_end = (match_date + timedelta(days=10)).strftime("%Y-%m-%d")
     try:
         bars = data_fetch.get_time_series(ticker, interval="1day", start_date=match_str, end_date=window_end)
     except Exception as e:
         print(f"historical_analog: could not verify outcome for {ticker} around {match_str}: {e}")
-        return ""
+        return None, None, f"price history for {ticker} isn't available that far back"
     if len(bars) < 5:
         # Not enough bars in that window (e.g. the ticker didn't exist yet,
         # or it was a holiday-heavy stretch) -- don't claim an outcome we
         # didn't actually check.
+        return None, None, "not enough price history around that date to check"
+    days_after = min(5, len(bars) - 1)
+    start_price, end_price = bars[0]["close"], bars[days_after]["close"]
+    return round((end_price - start_price) / start_price * 100, 2), days_after, None
+
+
+def _historical_outcome_sentence(ticker: str, match_date, planet: str, sign: str, retro: bool) -> str:
+    match_str = match_date.strftime("%Y-%m-%d")
+    pct_move, _, reason = _historical_outcome(ticker, match_date)
+    if reason:
         return ""
-    start_price, end_price = bars[0]["close"], bars[min(5, len(bars) - 1)]["close"]
-    pct_move = round((end_price - start_price) / start_price * 100, 2)
     outcome_word = "rose" if pct_move > 0 else "fell"
     return (f" The last genuinely comparable setup was around {match_str}, when {planet} was last in "
             f"{sign}{' (retrograde)' if retro else ''} after having actually left and come back -- not "
             f"just an earlier point in the same transit. In the week after that, {ticker} {outcome_word} "
             f"{abs(pct_move)}%.")
+
+
+def analog_for(sector: str, ticker: str, planet: str, condition: str, sign: str,
+               retro: bool, today_date) -> dict:
+    """Structured version of the analog above (the dashboard shows it as a
+    dated example next to the rule's overall record). Always returns a dict;
+    unverifiable_reason is set instead of fabricating or falling back."""
+    base = {"sector": sector, "ticker": ticker, "planet": planet, "condition": condition,
+            "sign": sign, "retrograde": retro, "match_date": None, "pct_move": None,
+            "days_after": None, "unverifiable_reason": None}
+    match_date = find_historical_analog(planet, today_date, sign, retro)
+    if not match_date:
+        base["unverifiable_reason"] = "no earlier occurrence found within the lookback window"
+        return base
+    base["match_date"] = match_date.strftime("%Y-%m-%d")
+    pct_move, days_after, reason = _historical_outcome(ticker, match_date)
+    base["pct_move"], base["days_after"], base["unverifiable_reason"] = pct_move, days_after, reason
+    return base
 
 
 def build_long_term_note(sector: str, ticker: str, direction: str, reasons: list,

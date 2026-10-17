@@ -1,0 +1,36 @@
+name: Score Weekly Picks (backtest)
+
+on:
+  schedule:
+    # Friday 22:30 UTC -- after the NYSE close and after portfolio_detail.yml
+    # (21:00 UTC) has finished, so this never overlaps it. Saturday 15:00 UTC
+    # is a catch-up for any week whose Friday bar wasn't available yet.
+    - cron: '30 22 * * 5'
+    - cron: '0 15 * * 6'
+  workflow_dispatch: {}
+
+# Shared with every other Twelve Data job: queue, never overlap.
+concurrency:
+  group: twelvedata
+  cancel-in-progress: false
+
+jobs:
+  score:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: pip install -r engine/requirements.txt
+
+      - name: Score pending weekly picks
+        working-directory: engine
+        env:
+          TWELVE_DATA_API_KEY: ${{ secrets.TWELVE_DATA_API_KEY }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+        run: python weekly_backtest.py

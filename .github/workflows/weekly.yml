@@ -6,6 +6,13 @@ on:
     - cron: '0 14 * * 0'
   workflow_dispatch: {}
 
+# One shared group for every job that spends Twelve Data credits: each process
+# rate-limits itself, so overlapping jobs double the request rate (real 429s
+# have already happened). Queue instead of overlapping.
+concurrency:
+  group: twelvedata
+  cancel-in-progress: false
+
 jobs:
   run-weekly:
     runs-on: ubuntu-latest

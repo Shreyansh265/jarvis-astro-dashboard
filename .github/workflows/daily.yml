@@ -10,6 +10,13 @@ on:
     - cron: '30 12 * * 1-5'
   workflow_dispatch: {}   # lets you trigger it manually from the Actions tab
 
+# One shared group for every job that spends Twelve Data credits: each process
+# rate-limits itself, so overlapping jobs double the request rate (real 429s
+# have already happened). Queue instead of overlapping.
+concurrency:
+  group: twelvedata
+  cancel-in-progress: false
+
 jobs:
   run-daily:
     runs-on: ubuntu-latest

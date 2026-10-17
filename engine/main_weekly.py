@@ -2,6 +2,9 @@
 from datetime import date
 import weekly_review
 import horizon_picks
+import forecast
+import weekly_picks
+import analogs
 
 
 def main():
@@ -21,6 +24,16 @@ def main():
 
     reviewed = horizon_picks.review_horizon_picks()
     print(f"Horizon picks reviewed: {reviewed}")
+
+    # Forward-looking pieces: each guarded so one failure can't block the rest.
+    # Forecast first (zero credits) -- weekly picks and analogs both read it.
+    for name, step in (("forecast", forecast.run_forecast),
+                       ("weekly picks", weekly_picks.create_weekly_picks),
+                       ("analogs", analogs.refresh_analogs)):
+        try:
+            step()
+        except Exception as e:
+            print(f"{name} failed: {e}")
 
 
 if __name__ == "__main__":
