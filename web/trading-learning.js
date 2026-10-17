@@ -1,5 +1,4 @@
-// Graha 2.0 (paper trading) tab (ledger, equity, month-to-date progress) and
-// Learning tab (rule confidence, mistakes, weekly review history).
+// Graha 2.0 (paper trading) tab: ledger, equity, month-to-date progress.
 
 const MONTHLY_TARGET_PCT = 15;
 
@@ -155,39 +154,3 @@ function renderEquitySparkline() {
   </svg>`;
 }
 
-function renderRuleWeights() {
-  const el = document.getElementById("rule-weights-list");
-  const rows = dataCache.ruleWeights;
-  if (!rows.length) { el.innerHTML = `<p class="empty-note">Graha hasn't learned anything yet — check back after the first review runs.</p>`; return; }
-  el.innerHTML = rows.map(r => `
-    <div class="weight-row">
-      <span class="weight-planet">${r.planet}</span>
-      <div class="possibility-bar-track weight-bar"><div class="possibility-bar-fill" style="width:${Math.round(r.weight * 100)}%"></div></div>
-      <span class="holding-meta">${Math.round(r.weight * 100)}% · ${r.correct_count}✓ / ${r.incorrect_count}✗</span>
-    </div>
-  `).join("");
-}
-
-function renderMistakes() {
-  const el = document.getElementById("mistakes-list");
-  const rows = dataCache.mistakes;
-  if (!rows.length) { el.innerHTML = `<p class="empty-note">No misses on record yet — either everything's held up so far, or nothing's old enough to verify.</p>`; return; }
-  el.innerHTML = rows.map(p => `
-    <div class="review-item">
-      <div class="review-summary">${p.sector.replace(/_/g, " ")} (${p.ticker}) — predicted ${p.direction} at ${p.possibility_indicator}%, actually went ${p.outcome_direction} (${p.outcome_pct_change}%)</div>
-      <div class="review-lesson">Graha remembers: ${(p.contributing_planets || []).join(", ") || "no single planet"} had its confidence adjusted because of this.</div>
-    </div>
-  `).join("");
-}
-
-function renderWeeklyReviews() {
-  const el = document.getElementById("review-strip");
-  const reviews = dataCache.weeklyReviews;
-  if (!reviews.length) { el.innerHTML = `<p class="empty-note">No weekly review yet — runs automatically every Sunday.</p>`; return; }
-  el.innerHTML = reviews.map(r => `
-    <div class="review-item">
-      <div class="review-summary">${r.summary}</div>
-      ${(r.lessons || []).slice(0, 3).map(l => `<div class="review-lesson">${l.reason_it_missed || JSON.stringify(l)}</div>`).join("")}
-    </div>
-  `).join("");
-}

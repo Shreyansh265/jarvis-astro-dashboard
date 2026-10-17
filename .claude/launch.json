@@ -4,8 +4,8 @@
     {
       "name": "web-static",
       "runtimeExecutable": "python",
-      "runtimeArgs": ["-m", "http.server", "8177", "--directory", "web"],
-      "port": 8177
+      "runtimeArgs": ["-m", "http.server", "8183", "--directory", "web"],
+      "port": 8183
     }
   ]
 }

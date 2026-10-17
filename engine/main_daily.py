@@ -9,9 +9,8 @@ Runs once per day via GitHub Actions (see .github/workflows/daily.yml):
   3. Log the planetary snapshot and every prediction to Supabase, including
      a long-term explanation (with a real historical planetary analog when
      one can be found -- see historical_analog.py) for each non-neutral sector.
-  4. Review yesterday's QQQ call and generate today's morning call, once
-     the Technology prediction above has actually landed in Supabase
-     (qqq_daily_call.py reads it fresh, not from in-memory `out`).
+  4. Refresh the 14-21 day sector forecast (zero API credits; guarded so a
+     failure never blocks the steps below).
   5. Suggest individual stocks within strongly-signaled sectors (Astro
      Stocks tab) and scan the curated watchlist for gainers/losers.
   6. Generate today's plain-language brief.
@@ -31,7 +30,6 @@ import paper_trader
 import historical_analog
 import plain_language
 import forecast
-import qqq_daily_call
 
 
 def main():
@@ -107,12 +105,6 @@ def main():
         forecast.run_forecast(rule_weights or None)
     except Exception as e:
         print(f"forecast failed: {e}")
-
-    try:
-        lean = qqq_daily_call.run_qqq_daily_call()
-        print(f"QQQ daily call: {lean}")
-    except Exception as e:
-        print(f"qqq_daily_call failed: {e}")
 
     suggested = stock_picks.run_stock_picks(out["sectors"])
     if suggested:

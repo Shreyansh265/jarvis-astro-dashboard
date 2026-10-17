@@ -279,12 +279,6 @@ header.masthead {
 .trade-action.COVER { color: var(--ink-dim); }
 .trade-reasoning { color: var(--ink-dim); margin-top: 3px; line-height: 1.4; }
 
-/* ---------- Learning tab ---------- */
-.weight-row { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--border); }
-.weight-row:last-child { border-bottom: none; }
-.weight-planet { font-family: 'IBM Plex Mono', monospace; font-size: 12px; min-width: 64px; }
-.weight-bar { flex: 1; margin: 0; }
-
 /* ---------- Forms / lists ---------- */
 input, button, textarea, select {
   font-family: 'Inter', sans-serif; font-size: 13px;

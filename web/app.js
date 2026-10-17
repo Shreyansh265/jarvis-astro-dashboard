@@ -23,13 +23,10 @@ const dataCache = {
   portfolio: [],
   paperAccount: null,
   recentTrades: [],
-  weeklyReviews: [],
   suggestedStocks: [],
   marketSnapshot: [],
   dailyBrief: null,
-  ruleWeights: [],
   equityHistory: [],
-  mistakes: [],
   horizonPicks: [],
   stockDetails: [],
   stockWatch: null,
@@ -57,8 +54,8 @@ function daysAgoISO(days) {
 async function loadAll() {
   const marketSnapshotSince = daysAgoISO(120);
   const [
-    latestLog, predictions, portfolio, paperAccount, recentTrades, weeklyReviews,
-    suggestedStocks, marketSnapshot, dailyBriefs, ruleWeights, equityHistory, mistakes,
+    latestLog, predictions, portfolio, paperAccount, recentTrades,
+    suggestedStocks, marketSnapshot, dailyBriefs, equityHistory,
     horizonPicks, stockDetails, stockWatch,
     sectorForecast, forecastDays, sectorUniverse, sectorWatch, weeklyPicks, portfolioPrices, analogRows,
   ] = await Promise.all([
@@ -67,7 +64,6 @@ async function loadAll() {
     SB.select("portfolio", "order=created_at.desc"),
     SB.select("paper_account", "limit=1"),
     SB.select("paper_trades", "order=created_at.desc&limit=50"),
-    SB.select("weekly_reviews", "order=week_start.desc&limit=6"),
     // Full history now (not just is_active=true) -- Astro Signals shows
     // every past pick, not only currently-tracked ones. Bounded so this
     // doesn't grow unbounded forever.
@@ -76,9 +72,7 @@ async function loadAll() {
     // can look up a price near an older suggestion/removal date, not just today.
     SB.select("market_snapshot", `date=gte.${marketSnapshotSince}&order=date.desc&limit=5000`),
     SB.select("daily_briefs", "order=date.desc&limit=1"),
-    SB.select("rule_weights", "order=weight.desc"),
     SB.select("equity_history", "order=date.asc&limit=90"),
-    SB.select("predictions", "was_correct=eq.false&order=date.desc&limit=8"),
     SB.select("horizon_picks", "order=period_start.desc,rank.asc&limit=60"),
     // Latest row per ticker is enough for "view details" -- bounded, not
     // full history (there's no need to keep every past day's snapshot
@@ -101,13 +95,10 @@ async function loadAll() {
   dataCache.portfolio = portfolio;
   dataCache.paperAccount = paperAccount[0] || null;
   dataCache.recentTrades = recentTrades;
-  dataCache.weeklyReviews = weeklyReviews;
   dataCache.suggestedStocks = suggestedStocks;
   dataCache.marketSnapshot = marketSnapshot;
   dataCache.dailyBrief = dailyBriefs[0] || null;
-  dataCache.ruleWeights = ruleWeights;
   dataCache.equityHistory = equityHistory;
-  dataCache.mistakes = mistakes;
   dataCache.horizonPicks = horizonPicks;
   dataCache.stockDetails = stockDetails;
   dataCache.stockWatch = stockWatch[0] || null;
@@ -147,10 +138,6 @@ async function loadAll() {
   renderOpenPositions();
   renderEquitySparkline();
 
-  // Learning tab
-  renderRuleWeights();
-  renderMistakes();
-  renderWeeklyReviews();
 }
 
 function dedupeLatestPerSector(predictions) {
