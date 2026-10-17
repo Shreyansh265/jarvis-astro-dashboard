@@ -84,6 +84,60 @@ SECTOR_TOP_STOCKS = {
     "Canada_Broad": ["RY", "TD", "SHOP"],
 }
 
+# The stocks a user can pick inside a sector on the This Week's Signals tab
+# (names only, mirrored to the sector_universe table by engine/forecast.py).
+# Deliberately SEPARATE from SECTOR_TOP_STOCKS above: that dict drives
+# stock_picks.py (suggests every listed ticker in a signaled sector) and
+# market_watch.py (prices every listed ticker daily), so enlarging it would
+# multiply quotes and Twelve Data credits. A stock chosen from here simply
+# inherits its sector's forecast -- no per-stock astrology exists, and the UI
+# says so.
+SECTOR_STOCK_UNIVERSE = {
+    "Energy": [("XOM", "Exxon Mobil"), ("CVX", "Chevron"), ("COP", "ConocoPhillips"),
+               ("EOG", "EOG Resources"), ("SLB", "Schlumberger"), ("OXY", "Occidental Petroleum"),
+               ("MPC", "Marathon Petroleum"), ("PSX", "Phillips 66")],
+    "Financials": [("JPM", "JPMorgan Chase"), ("BAC", "Bank of America"), ("GS", "Goldman Sachs"),
+                   ("MS", "Morgan Stanley"), ("WFC", "Wells Fargo"), ("C", "Citigroup"),
+                   ("BLK", "BlackRock"), ("SCHW", "Charles Schwab")],
+    "Technology": [("AAPL", "Apple"), ("MSFT", "Microsoft"), ("NVDA", "NVIDIA"),
+                   ("AVGO", "Broadcom"), ("ORCL", "Oracle"), ("CRM", "Salesforce"),
+                   ("AMD", "AMD"), ("ADBE", "Adobe")],
+    "Healthcare": [("UNH", "UnitedHealth"), ("JNJ", "Johnson & Johnson"), ("LLY", "Eli Lilly"),
+                   ("PFE", "Pfizer"), ("ABBV", "AbbVie"), ("MRK", "Merck"),
+                   ("TMO", "Thermo Fisher"), ("ABT", "Abbott Laboratories")],
+    "Industrials": [("CAT", "Caterpillar"), ("BA", "Boeing"), ("HON", "Honeywell"),
+                    ("GE", "GE Aerospace"), ("UPS", "UPS"), ("DE", "Deere"),
+                    ("LMT", "Lockheed Martin"), ("RTX", "RTX")],
+    "Materials_Mining": [("LIN", "Linde"), ("FCX", "Freeport-McMoRan"), ("NEM", "Newmont"),
+                         ("SHW", "Sherwin-Williams"), ("APD", "Air Products"), ("NUE", "Nucor"),
+                         ("DOW", "Dow"), ("ECL", "Ecolab")],
+    "Consumer_Discretionary": [("AMZN", "Amazon"), ("HD", "Home Depot"), ("MCD", "McDonald's"),
+                               ("TSLA", "Tesla"), ("NKE", "Nike"), ("SBUX", "Starbucks"),
+                               ("LOW", "Lowe's"), ("BKNG", "Booking Holdings")],
+    "Consumer_Staples": [("PG", "Procter & Gamble"), ("KO", "Coca-Cola"), ("PEP", "PepsiCo"),
+                         ("WMT", "Walmart"), ("COST", "Costco"), ("PM", "Philip Morris"),
+                         ("CL", "Colgate-Palmolive"), ("MDLZ", "Mondelez")],
+    "Utilities": [("NEE", "NextEra Energy"), ("DUK", "Duke Energy"), ("SO", "Southern Company"),
+                  ("D", "Dominion Energy"), ("AEP", "American Electric Power"), ("EXC", "Exelon"),
+                  ("SRE", "Sempra"), ("XEL", "Xcel Energy")],
+    "Real_Estate": [("AMT", "American Tower"), ("PLD", "Prologis"), ("EQIX", "Equinix"),
+                    ("SPG", "Simon Property"), ("O", "Realty Income"), ("PSA", "Public Storage"),
+                    ("CCI", "Crown Castle"), ("WELL", "Welltower")],
+    "Communication_Media": [("GOOGL", "Alphabet (Google)"), ("META", "Meta Platforms"), ("NFLX", "Netflix"),
+                            ("DIS", "Disney"), ("CMCSA", "Comcast"), ("T", "AT&T"),
+                            ("VZ", "Verizon"), ("TMUS", "T-Mobile US")],
+    "Gold": [("AEM", "Agnico Eagle"), ("FNV", "Franco-Nevada"), ("AU", "AngloGold Ashanti"),
+             ("KGC", "Kinross Gold"), ("WPM", "Wheaton Precious Metals"), ("GFI", "Gold Fields"),
+             ("HMY", "Harmony Gold"), ("NEM", "Newmont")],
+    "Silver": [("WPM", "Wheaton Precious Metals"), ("PAAS", "Pan American Silver"), ("AG", "First Majestic Silver"),
+               ("HL", "Hecla Mining"), ("CDE", "Coeur Mining"), ("MAG", "MAG Silver")],
+    "Canada_Broad": [("RY", "Royal Bank of Canada"), ("TD", "TD Bank"), ("SHOP", "Shopify"),
+                     ("ENB", "Enbridge"), ("BNS", "Scotiabank"), ("BMO", "Bank of Montreal"),
+                     ("CNQ", "Canadian Natural Resources"), ("CP", "Canadian Pacific Kansas City")],
+    "US_Broad": [("SPY", "S&P 500 ETF"), ("QQQ", "Nasdaq-100 ETF"), ("DIA", "Dow Jones ETF"),
+                 ("IWM", "Russell 2000 ETF")],
+}
+
 # Sign a planet is "exalted" in (traditionally strong/bullish for its sectors)
 # and "debilitated" in (traditionally weak/bearish for its sectors).
 EXALTATION = {

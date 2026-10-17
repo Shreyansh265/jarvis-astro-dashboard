@@ -1,0 +1,30 @@
+name: Refresh Sector Forecast (manual)
+
+on:
+  workflow_dispatch: {}
+
+# Shares one concurrency group with every other Twelve Data / engine job so
+# overlapping runs queue instead of doubling the request rate.
+concurrency:
+  group: twelvedata
+  cancel-in-progress: false
+
+jobs:
+  forecast:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: pip install -r engine/requirements.txt
+
+      - name: Refresh forecast
+        working-directory: engine
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+        run: python main_forecast.py

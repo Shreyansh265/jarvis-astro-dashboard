@@ -30,6 +30,7 @@ import eli5
 import paper_trader
 import historical_analog
 import plain_language
+import forecast
 import qqq_daily_call
 
 
@@ -99,6 +100,13 @@ def main():
         predictions_logged += 1
 
     print(f"Logged {predictions_logged} predictions for {today}")
+
+    # Pure ephemeris compute (zero API credits). Guarded so a forecast bug
+    # can never block the stock picks / paper trading steps below.
+    try:
+        forecast.run_forecast(rule_weights or None)
+    except Exception as e:
+        print(f"forecast failed: {e}")
 
     try:
         lean = qqq_daily_call.run_qqq_daily_call()
