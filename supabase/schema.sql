@@ -759,3 +759,133 @@ create policy "stock_watch_own" on stock_watch for all to authenticated
   using (auth.uid() = user_id and not current_user_is_banned())
   with check (auth.uid() = user_id and not current_user_is_banned());
 create unique index if not exists stock_watch_user_uidx on stock_watch(user_id);
+
+-- ===================================================================
+-- Dashboard overhaul: forward-looking forecast, weekly picks + backtest,
+-- sector universe, per-user sector view, portfolio prices.
+-- All shared tables are public-read (select using (true)) with NO write
+-- policies -- only the engine's service-role key ever writes them.
+-- ===================================================================
+
+-- Day-by-day sector forecast, ~14 days ahead, computed by engine/forecast.py.
+-- ALL 15 sectors get a row every day: a sector that signals.generate_signals
+-- does not return (no exalted/debilitated/retrograde ruler that day) is
+-- stored has_signal=false -- "no astrological signal", not a flat forecast.
+-- Only forecast_date >= today is ever upserted; past rows are never rewritten.
+create table if not exists sector_forecast (
+    id bigint generated always as identity primary key,
+    forecast_date date not null,
+    sector text not null,
+    direction text not null,                 -- 'bullish' | 'bearish' | 'neutral'
+    strength numeric not null default 0,     -- possibility_indicator, 0-100
+    signed_score numeric not null default 0, -- bullish_score - bearish_score
+    has_signal boolean not null default false,
+    reasons jsonb not null default '[]'::jsonb,        -- original astrological reasons
+    plain_reasons jsonb not null default '[]'::jsonb,  -- deterministic plain-English phrases
+    analog_key text,                         -- key into analog_cache for the lead planet condition
+    is_trading_day boolean not null default true,
+    computed_at timestamptz not null default now(),
+    unique (forecast_date, sector)
+);
+alter table sector_forecast enable row level security;
+drop policy if exists "public read sector_forecast" on sector_forecast;
+create policy "public read sector_forecast" on sector_forecast for select using (true);
+
+-- Per-day human-readable sky events (sign changes, retrograde stations/turns,
+-- tight aspects) from diffing consecutive days -- powers "what changes this
+-- week" on the This Week's Signals tab, since most sector conditions are
+-- steady for weeks and only the Moon + aspects move day to day.
+create table if not exists forecast_days (
+    forecast_date date primary key,
+    is_trading_day boolean not null default true,
+    events jsonb not null default '[]'::jsonb,
+    computed_at timestamptz not null default now()
+);
+alter table forecast_days enable row level security;
+drop policy if exists "public read forecast_days" on forecast_days;
+create policy "public read forecast_days" on forecast_days for select using (true);
+
+-- Graha's frozen weekly picks (created Sunday, never regenerated after the
+-- week starts -- picked_at is the hindsight-proof receipt) and their real
+-- Mon->Fri outcome, filled in by engine/weekly_backtest.py after the close.
+create table if not exists weekly_picks (
+    id bigint generated always as identity primary key,
+    week_start date not null,
+    week_end date not null,                  -- last trading day of that week
+    ticker text not null,
+    sector text not null,
+    etf_ticker text,
+    direction text not null check (direction in ('bullish','bearish')),
+    rank integer,
+    strength numeric,
+    reasoning text,
+    plain_reasons jsonb not null default '[]'::jsonb,
+    picked_at timestamptz not null default now(),
+    entry_price numeric,                     -- open of the first bar on/after week_start
+    daily_closes jsonb,                      -- [{date, close}, ...]
+    stock_return_pct numeric,
+    etf_return_pct numeric,
+    spy_return_pct numeric,
+    was_correct boolean,
+    status text not null default 'pending' check (status in ('pending','complete')),
+    unique (week_start, ticker)
+);
+alter table weekly_picks enable row level security;
+drop policy if exists "public read weekly_picks" on weekly_picks;
+create policy "public read weekly_picks" on weekly_picks for select using (true);
+
+-- Cached "it happened before" example per (sector, planet, condition, sign):
+-- analogs only change when the planet's condition changes, so this is
+-- computed weekly rather than inside the tight pre-market daily job.
+create table if not exists analog_cache (
+    key text primary key,
+    payload jsonb not null,
+    computed_at timestamptz not null default now()
+);
+alter table analog_cache enable row level security;
+drop policy if exists "public read analog_cache" on analog_cache;
+create policy "public read analog_cache" on analog_cache for select using (true);
+
+-- Mirror of engine/rulerships.py's SECTOR_STOCK_UNIVERSE (written by the
+-- engine, one source of truth) -- the stocks a user can pick inside a sector
+-- on the This Week's Signals tab. Friendly group labels live in frontend JS.
+create table if not exists sector_universe (
+    sector text not null,
+    ticker text not null,
+    name text not null,
+    primary key (sector, ticker)
+);
+alter table sector_universe enable row level security;
+drop policy if exists "public read sector_universe" on sector_universe;
+create policy "public read sector_universe" on sector_universe for select using (true);
+
+-- Per-user chosen rows for the This Week's Signals tab. ticker NULL means
+-- "the sector in general". A stock row inherits its SECTOR's forecast --
+-- there is no per-stock astrology, and the UI says so.
+create table if not exists sector_watch (
+    id bigint generated always as identity primary key,
+    user_id uuid not null default auth.uid() references auth.users(id) on delete cascade,
+    sector text not null,
+    ticker text,
+    added_at timestamptz not null default now()
+);
+alter table sector_watch enable row level security;
+drop policy if exists "sector_watch_own" on sector_watch;
+create policy "sector_watch_own" on sector_watch for all to authenticated
+  using (auth.uid() = user_id and not current_user_is_banned())
+  with check (auth.uid() = user_id and not current_user_is_banned());
+create unique index if not exists sector_watch_unique_uidx
+  on sector_watch (user_id, sector, coalesce(ticker, ''));
+
+-- Latest price per holding ticker, written by engine/portfolio_detail.py
+-- (which already fetches a quote per holding -- zero extra API credits) so
+-- Portfolio P&L works for tickers outside the curated watchlist too.
+create table if not exists portfolio_prices (
+    ticker text primary key,
+    price numeric not null,
+    as_of date not null,
+    updated_at timestamptz not null default now()
+);
+alter table portfolio_prices enable row level security;
+drop policy if exists "public read portfolio_prices" on portfolio_prices;
+create policy "public read portfolio_prices" on portfolio_prices for select using (true);
