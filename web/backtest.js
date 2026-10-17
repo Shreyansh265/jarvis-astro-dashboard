@@ -167,10 +167,8 @@ function renderWeeklyPicksReport() {
 
 function _suggestionWeek(dateStr) { return mondayOf(dateStr); }
 
-function renderSuggestionHistory() {
-  const el = document.getElementById("bt-suggestions");
-  if (!el) return;
-  const rows = (dataCache.suggestedStocks || []).map(s => {
+function suggestionRows() {
+  return (dataCache.suggestedStocks || []).map(s => {
     const snap = _latestSnapshot(s.ticker);
     const now = snap ? Number(snap.price) : null;
     const then = s.price_at_suggestion !== null && s.price_at_suggestion !== undefined ? Number(s.price_at_suggestion) : null;
@@ -178,6 +176,12 @@ function renderSuggestionHistory() {
     const right = change === null ? null : (s.direction === "bullish" ? change > 0 : change < 0);
     return { ...s, now, then, change, right, week: _suggestionWeek(s.date_suggested) };
   });
+}
+
+function renderSuggestionHistory() {
+  const el = document.getElementById("bt-suggestions");
+  if (!el) return;
+  const rows = suggestionRows();
   if (!rows.length) { el.innerHTML = `<p class="empty-note">No suggestions yet.</p>`; return; }
 
   const weeks = [...new Set(rows.map(r => r.week))].sort().reverse();

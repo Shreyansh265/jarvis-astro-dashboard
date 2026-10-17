@@ -38,6 +38,8 @@ const dataCache = {
   sectorUniverse: [],
   sectorWatch: [],
   weeklyPicks: [],
+  portfolioPrices: [],
+  analogCache: {},
 };
 
 // New-feature tables get their own .catch so a not-yet-applied schema or an
@@ -58,7 +60,7 @@ async function loadAll() {
     latestLog, predictions, portfolio, paperAccount, recentTrades, weeklyReviews,
     suggestedStocks, marketSnapshot, dailyBriefs, ruleWeights, equityHistory, mistakes,
     horizonPicks, stockDetails, stockWatch,
-    sectorForecast, forecastDays, sectorUniverse, sectorWatch, weeklyPicks,
+    sectorForecast, forecastDays, sectorUniverse, sectorWatch, weeklyPicks, portfolioPrices, analogRows,
   ] = await Promise.all([
     SB.select("planetary_log", "order=date.desc&limit=1"),
     SB.select("predictions", "order=date.desc,created_at.desc&limit=40"),
@@ -90,6 +92,8 @@ async function loadAll() {
     softSelect("sector_universe", "order=sector.asc,ticker.asc&limit=500"),
     softSelect("sector_watch", "order=added_at.asc"),
     softSelect("weekly_picks", "order=week_start.desc,rank.asc&limit=200"),
+    softSelect("portfolio_prices", "limit=500"),
+    softSelect("analog_cache", "limit=500"),
   ]);
 
   dataCache.latestLog = latestLog[0] || null;
@@ -112,13 +116,15 @@ async function loadAll() {
   dataCache.sectorUniverse = sectorUniverse;
   dataCache.sectorWatch = sectorWatch;
   dataCache.weeklyPicks = weeklyPicks;
+  dataCache.portfolioPrices = portfolioPrices;
+  dataCache.analogCache = Object.fromEntries(analogRows.map(r => [r.key, r.payload]));
 
   // Dashboard tab
   renderBrief();
   renderMovers();
   renderPortfolioPreview();
-  renderPicksPreview();
-  renderHorizonPreview();
+  renderPoisedToRise();
+  renderTrackRecord();
 
   // This Week's Signals tab
   if (dataCache.latestLog) renderZodiacWheel(document.getElementById("orrery-container"), dataCache.latestLog.positions);
@@ -199,48 +205,56 @@ function renderMovers() {
   });
 }
 
-function renderPicksPreview() {
-  const el = document.getElementById("picks-preview");
-  const rows = dataCache.suggestedStocks.filter(r => r.is_active).slice(0, 4);
-  if (!rows.length) { el.innerHTML = `<p class="empty-note">No active picks right now.</p>`; return; }
-  el.innerHTML = rows.map(r => `
-    <div class="pick-preview-row">
-      <span class="mover-ticker">${r.ticker}</span>
-      <span class="sector-direction ${r.direction}">${r.direction}</span>
-      <span class="holding-meta">${(r.sector || "").replace(/_/g, " ")}</span>
-    </div>
-  `).join("");
+// Latest known price for a ticker, with the date it's "as of". Prefers whichever
+// source is newer: portfolio_prices (written post-close by portfolio_detail.py
+// for every holding, curated or not) or market_snapshot (pre-market scan of the
+// curated watchlist, effectively the prior close). Never fetched live.
+function _priceInfoFor(ticker) {
+  const pp = (dataCache.portfolioPrices || []).find(r => r.ticker === ticker);
+  const snap = dataCache.marketSnapshot.find(r => r.ticker === ticker); // date.desc -> first is latest
+  if (pp && (!snap || pp.as_of >= snap.date)) return { price: Number(pp.price), asOf: pp.as_of };
+  if (snap) return { price: Number(snap.price), asOf: snap.date };
+  return null;
 }
-
-function renderHorizonPreview() {
-  const el = document.getElementById("horizon-preview");
-  const weekly = dataCache.horizonPicks.filter(r => r.horizon === "weekly").sort((a, b) => a.rank - b.rank);
-  if (!weekly.length) { el.innerHTML = `<p class="empty-note">No weekly picks yet.</p>`; return; }
-  const top = weekly[0];
-  el.innerHTML = `
-    <div class="sector-name">${top.sector.replace(/_/g, " ")}</div>
-    <div class="sector-direction ${top.today_tone}">${top.today_tone} <span class="sample-quality-badge ${top.sample_quality}">${top.sample_quality} confidence</span></div>
-    <div class="holding-meta">${(top.tickers || []).join(", ")}</div>
-  `;
-}
-
 function _latestPriceFor(ticker) {
-  const hit = dataCache.marketSnapshot.find(r => r.ticker === ticker);
-  return hit ? Number(hit.price) : null; // marketSnapshot is ordered date.desc, so first match is latest
+  const info = _priceInfoFor(ticker);
+  return info ? info.price : null;
 }
-
 function renderPortfolioPreview() {
   const el = document.getElementById("portfolio-preview");
-  const rows = dataCache.portfolio.filter(r => r.status !== "closed").slice(0, 4);
-  if (!rows.length) { el.innerHTML = `<p class="empty-note">No open holdings yet.</p>`; return; }
-  el.innerHTML = rows.map(r => `
-    <div class="holding">
+  const rows = dataCache.portfolio.filter(r => r.status !== "closed");
+  if (!rows.length) { el.innerHTML = `<p class="empty-note">No open holdings yet — add one from the Portfolio tab, or use the "+ portfolio" buttons on the gainers/losers above.</p>`; return; }
+  let totalCost = 0, totalNow = 0, priced = 0, newest = null;
+  const lines = rows.slice(0, 6).map(r => {
+    const info = _priceInfoFor(r.ticker);
+    const cost = Number(r.buy_price) * Number(r.quantity);
+    let pnlHtml = `<span class="holding-meta">price not available yet</span>`;
+    if (info) {
+      const now = info.price * Number(r.quantity), pnl = now - cost;
+      pnlHtml = `<span class="${pnl >= 0 ? "bullish" : "bearish"}">${pnl >= 0 ? "+" : "-"}$${Math.abs(pnl).toFixed(2)} (${pnl >= 0 ? "+" : ""}${(pnl / cost * 100).toFixed(2)}%)</span>`;
+    }
+    return `<div class="holding">
       <div>
-        <div>${r.ticker} <span class="holding-meta">× ${r.quantity}</span></div>
-        <div class="holding-meta">bought $${r.buy_price} · ${r.buy_date}</div>
+        <div>${escapeHtml(r.ticker)} <span class="holding-meta">× ${r.quantity}</span></div>
+        <div class="holding-meta">bought $${r.buy_price} · now ${info ? "$" + info.price.toFixed(2) : "—"}</div>
       </div>
-    </div>
-  `).join("");
+      <div>${pnlHtml}</div>
+    </div>`;
+  }).join("");
+  for (const r of rows) {
+    const info = _priceInfoFor(r.ticker);
+    if (!info) continue;
+    priced++;
+    totalCost += Number(r.buy_price) * Number(r.quantity);
+    totalNow += info.price * Number(r.quantity);
+    if (!newest || info.asOf > newest) newest = info.asOf;
+  }
+  const total = totalNow - totalCost;
+  el.innerHTML = lines + (priced
+    ? `<div class="portfolio-total"><span>Total open P&amp;L${priced < rows.length ? ` (${priced} of ${rows.length} priced)` : ""}</span>
+         <strong class="${total >= 0 ? "bullish" : "bearish"}">${total >= 0 ? "+" : "-"}$${Math.abs(total).toFixed(2)} (${totalCost ? (total >= 0 ? "+" : "") + (total / totalCost * 100).toFixed(2) : "0.00"}%)</strong></div>
+       <div class="holding-meta">Prices as of ${newest} (daily scan, not live)</div>`
+    : "") + (rows.length > 6 ? `<div class="holding-meta">+ ${rows.length - 6} more in the Portfolio tab</div>` : "");
 }
 
 function renderPortfolioTable() {

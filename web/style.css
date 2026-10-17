@@ -461,3 +461,11 @@ button.ghost:hover { color: #fff; background: var(--link); border-color: var(--l
 .mini-bar-day { font-size: 10.5px; color: var(--ink-dim); text-transform: uppercase; letter-spacing: 0.04em; }
 .bt-week-group { margin-top: 16px; }
 .bt-week-group-title { font-size: 12px; font-weight: 700; color: var(--accent-strong); margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.04em; }
+
+/* ---------- Dashboard: poised-to-rise, portfolio total ---------- */
+.poised-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+@media (max-width: 1000px) { .poised-grid { grid-template-columns: 1fr; } }
+.poised-card { display: flex; flex-direction: column; gap: 2px; }
+.poised-analog { margin-top: 10px; padding: 10px 12px; font-size: 12px; line-height: 1.55; color: var(--ink); background: var(--panel); border: 1px dashed var(--border-strong); border-radius: var(--radius-sm); }
+.poised-analog-tag { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: var(--ink-dim); }
+.portfolio-total { display: flex; justify-content: space-between; align-items: center; padding-top: 10px; margin-top: 4px; border-top: 2px solid var(--border-strong); font-size: 13px; }
