@@ -84,28 +84,51 @@ def _priority(cond: str, planet: str) -> int:
     return 2
 
 
+def _tone_of(cond: str, planet: str) -> str:
+    """up | down | mixed -- which way this single factor pushes its sectors."""
+    if cond == "exalted":
+        return "up"
+    if cond == "debilitated":
+        return "down"
+    return "mixed"
+
+
+_MARK = {"up": "▲ ", "down": "▼ ", "mixed": "◆ "}
+
+
 def sector_plain_reasons(sector: str, contributing_planets: list, pos: dict,
-                         aspects: list, limit: int = 3) -> list:
-    """Up to `limit` short phrases for one sector on one day, strongest first
-    (exalted/debilitated, then real retrogrades, then aspects, then the
-    always-on lunar-node background)."""
+                         aspects: list, limit: int = 3, direction: str = None) -> list:
+    """Up to `limit` short phrases for one sector on one day. Each is marked
+    ▲ (helps), ▼ (hurts) or ◆ (mixed/choppy) so a mostly-bearish day can't
+    read as a contradiction, and factors pointing the SAME way as the
+    sector's overall direction are listed first (then strongest-first:
+    exalted/debilitated, real retrogrades, aspects, node background)."""
+    want = {"bullish": "up", "bearish": "down"}.get(direction)
     ranked = []
     for planet in contributing_planets:
         cond = planet_condition(planet, pos)
-        ranked.append((_priority(cond, planet), planet_phrase(planet, pos)))
+        tone = _tone_of(cond, planet)
+        ranked.append((tone, _priority(cond, planet), planet_phrase(planet, pos)))
     for asp in aspects:
         if asp["tone"] not in ("bullish", "bearish"):
             continue
         for planet in (asp["planet1"], asp["planet2"]):
             rule = PLANET_SECTOR_RULES.get(planet)
             if rule and sector in rule["sectors"]:
-                ranked.append((1.5, aspect_phrase(asp)))
+                ranked.append(("up" if asp["tone"] == "bullish" else "down", 1.5, aspect_phrase(asp)))
                 break
-    ranked.sort(key=lambda x: x[0])
+
+    def key(item):
+        tone, prio, _ = item
+        matches = 0 if (want and tone == want) else (1 if tone == "mixed" else 2)
+        return (matches if want else 0, prio)
+
+    ranked.sort(key=key)
     out = []
-    for _, phrase in ranked:
-        if phrase not in out:
-            out.append(phrase)
+    for tone, _, phrase in ranked:
+        marked = _MARK[tone] + phrase
+        if marked not in out:
+            out.append(marked)
     return out[:limit]
 
 
