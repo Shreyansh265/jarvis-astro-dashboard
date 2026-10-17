@@ -132,6 +132,30 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   });
 
+  const pwModal = document.getElementById("password-modal");
+  const pwForm = document.getElementById("password-form");
+  const pwErr = document.getElementById("password-error");
+  const pwOk = document.getElementById("password-success");
+  const closePw = () => { pwModal.hidden = true; pwForm.reset(); pwErr.textContent = ""; pwOk.textContent = ""; };
+  document.getElementById("change-password-btn").addEventListener("click", () => { pwErr.textContent = ""; pwOk.textContent = ""; pwModal.hidden = false; });
+  document.getElementById("password-cancel").addEventListener("click", closePw);
+  pwModal.addEventListener("click", (e) => { if (e.target === pwModal) closePw(); });
+  pwForm.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    pwErr.textContent = ""; pwOk.textContent = "";
+    const next = document.getElementById("new-password").value;
+    if (next !== document.getElementById("new-password-confirm").value) { pwErr.textContent = "Passwords don't match."; return; }
+    const btn = document.getElementById("password-submit");
+    btn.disabled = true;
+    try {
+      await window.Auth.updatePassword(next);
+      pwForm.reset();
+      pwOk.textContent = "Password updated. Use it next time you sign in.";
+    } catch (err) {
+      pwErr.textContent = err.message || "Could not update password.";
+    } finally { btn.disabled = false; }
+  });
+
   document.getElementById("logout-btn").addEventListener("click", async () => {
     await window.Auth.signOut();
   });

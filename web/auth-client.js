@@ -27,6 +27,13 @@ window.Auth = {
     return data;
   },
 
+  async updatePassword(newPassword) {
+    // Needs a live session; this project doesn't require re-entering the old
+    // password (security_update_password_require_current_password is off).
+    const { error } = await supabase.auth.updateUser({ password: newPassword });
+    if (error) throw error;
+  },
+
   async signOut() {
     // Real revocation, not just clearing local storage -- a token
     // exfiltrated via some other bug must actually stop working on

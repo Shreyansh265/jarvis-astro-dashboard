@@ -55,8 +55,8 @@ body {
 .auth-card form { text-align: left; margin-top: 16px; }
 .auth-card .form-row { display: block; margin-bottom: 10px; }
 .auth-card .form-row input { width: 100%; }
-.auth-card .password-field-wrap { position: relative; }
-.auth-card .password-field-wrap input { width: 100%; padding-right: 44px; }
+.auth-card .password-field-wrap, .modal-panel .password-field-wrap { position: relative; }
+.auth-card .password-field-wrap input, .modal-panel .password-field-wrap input { width: 100%; padding-right: 44px; }
 .password-toggle-btn {
   position: absolute; top: 50%; right: 4px; transform: translateY(-50%);
   width: 34px; height: 34px; padding: 0;
@@ -463,3 +463,6 @@ button.ghost:hover { color: #fff; background: var(--link); border-color: var(--l
 .poised-analog { margin-top: 10px; padding: 10px 12px; font-size: 12px; line-height: 1.55; color: var(--ink); background: var(--panel); border: 1px dashed var(--border-strong); border-radius: var(--radius-sm); }
 .poised-analog-tag { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: var(--ink-dim); }
 .portfolio-total { display: flex; justify-content: space-between; align-items: center; padding-top: 10px; margin-top: 4px; border-top: 2px solid var(--border-strong); font-size: 13px; }
+
+#password-form { display: flex; flex-direction: column; gap: 10px; margin-top: 14px; }
+#password-success { color: var(--bullish); font-size: 12.5px; min-height: 16px; }

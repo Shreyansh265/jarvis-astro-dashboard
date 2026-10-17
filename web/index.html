@@ -55,6 +55,7 @@
     </div>
     <div style="display:flex;align-items:center;gap:14px">
       <div class="masthead-clock" id="clock"></div>
+      <button class="ghost" id="change-password-btn" type="button">change password</button>
       <button class="ghost" id="logout-btn" type="button">log out</button>
     </div>
   </header>
@@ -370,6 +371,26 @@
 </div>
 
 <!-- ============ STOCK DETAIL MODAL ============ -->
+<div class="modal-backdrop" id="password-modal" hidden>
+  <div class="modal-panel">
+    <button type="button" class="ghost modal-close" id="password-cancel">Close</button>
+    <h3>Change your password</h3>
+    <form id="password-form">
+      <div class="form-row password-field-wrap">
+        <input id="new-password" type="password" placeholder="New password (min 6 characters)" required minlength="6" autocomplete="new-password">
+        <button type="button" class="password-toggle-btn" data-password-toggle="new-password" aria-label="Show password" title="Show password"><svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor" aria-hidden="true"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg></button>
+      </div>
+      <div class="form-row password-field-wrap">
+        <input id="new-password-confirm" type="password" placeholder="Confirm new password" required minlength="6" autocomplete="new-password">
+        <button type="button" class="password-toggle-btn" data-password-toggle="new-password-confirm" aria-label="Show password" title="Show password"><svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor" aria-hidden="true"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg></button>
+      </div>
+      <button type="submit" id="password-submit">Update password</button>
+      <div class="form-error" id="password-error"></div>
+      <div id="password-success"></div>
+    </form>
+  </div>
+</div>
+
 <div class="modal-backdrop" id="stock-detail-backdrop" hidden>
   <div class="modal-panel">
     <button class="ghost modal-close" id="stock-detail-close">close</button>
