@@ -51,7 +51,7 @@
   <header class="masthead">
     <div>
       <h1 class="masthead-title">Graha <span class="masthead-title-dim">— Astro Trading Platform</span></h1>
-      <div class="masthead-sub">17 years reading the sky for markets · Signals · Astro Stocks · Graha 2.0 · Learning</div>
+      <div class="masthead-sub">17 years reading the sky for markets · Signals · Astro Stocks · Graha 2.0 · Backtest</div>
     </div>
     <div style="display:flex;align-items:center;gap:14px">
       <div class="masthead-clock" id="clock"></div>
@@ -65,7 +65,7 @@
     <button class="tab-btn" data-tab="stocks">Astro Signals</button>
     <button class="tab-btn" data-tab="portfolio">Portfolio</button>
     <button class="tab-btn" data-tab="trading">Graha 2.0</button>
-    <button class="tab-btn" data-tab="qqq">QQQ Analysis</button>
+    <button class="tab-btn" data-tab="backtest">Backtest</button>
     <button class="tab-btn" data-tab="admin-overview" id="admin-tab-btn" hidden>Overview<span class="status-badge active" style="margin-left:6px">ADMIN</span></button>
     <button class="tab-btn" data-tab="learning">Learning</button>
   </nav>
@@ -104,12 +104,6 @@
             <h2>Graha's Picks Right Now</h2>
             <div id="picks-preview"></div>
             <button class="ghost" style="margin-top:10px;width:100%" data-goto-tab="stocks">See all Astro Signals →</button>
-          </div>
-
-          <div class="panel">
-            <h2>Today's QQQ Call</h2>
-            <div id="qqq-call-preview"></div>
-            <button class="ghost" style="margin-top:10px;width:100%" data-goto-tab="qqq">Full QQQ analysis →</button>
           </div>
 
           <div class="panel">
@@ -314,25 +308,18 @@
         </div>
       </section>
 
-      <!-- ============ QQQ ANALYSIS ============ -->
-      <section class="tab-pane" id="tab-qqq">
+      <!-- ============ BACKTEST ============ -->
+      <section class="tab-pane" id="tab-backtest">
         <div class="panel">
-          <h2>Today's QQQ Call</h2>
-          <div class="empty-note movers-note">One graduated call each morning, combining Technology-sector astrology with recent price action. No real options-chain data exists on our data plan, so this is a directional lean with qualitative risk tiers -- not real strikes, premiums, or greeks.</div>
-          <div id="qqq-today-lean"></div>
-          <div class="trading-stats-row" id="qqq-stat-tiles"></div>
-          <div class="qqq-tiers" id="qqq-risk-tiers"></div>
+          <h2>Weekly Picks Report Card</h2>
+          <div class="empty-note movers-note">Every weekend Graha freezes its strongest sector picks for the coming week (one lead stock each, only when the sky signal is strong and consistent — so some weeks have few or none). After Friday's close each pick is scored against what really happened, Monday's open to Friday's close, next to the sector fund and the overall market. Only finished weeks show results.</div>
+          <div class="bt-pills" id="bt-week-pills"></div>
+          <div id="bt-stats"></div>
+          <div id="bt-picks"></div>
         </div>
         <div class="panel">
-          <h2>Call History</h2>
-          <div class="table-scroll">
-            <table class="data-table" id="qqq-table">
-              <thead>
-                <tr><th>Date</th><th>Lean</th><th>Astro Bias</th><th>Technical Bias</th><th>Pivot</th><th>Outcome</th></tr>
-              </thead>
-              <tbody id="qqq-table-body"></tbody>
-            </table>
-          </div>
+          <h2>Every Suggestion So Far</h2>
+          <div id="bt-suggestions"></div>
         </div>
       </section>
 
@@ -414,7 +401,7 @@
 <script src="signals-stocks.js"></script>
 <script src="forecast.js"></script>
 <script src="trading-learning.js"></script>
-<script src="qqq.js"></script>
+<script src="backtest.js"></script>
 <script src="admin.js"></script>
 <script src="auth-gate.js"></script>
 <script src="app.js"></script>

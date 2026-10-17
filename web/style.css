@@ -222,7 +222,7 @@ header.masthead {
 .aspect-tone.bullish { color: var(--bullish); }
 .aspect-tone.bearish { color: var(--bearish); }
 
-/* ---------- Creative data tables (Astro Signals, Portfolio, QQQ history) ---------- */
+/* ---------- Creative data tables (Astro Signals, Portfolio, Backtest) ---------- */
 .table-scroll { overflow-x: auto; }
 .data-table { width: 100%; border-collapse: collapse; font-size: 12.5px; white-space: nowrap; }
 .data-table thead th {
@@ -269,18 +269,6 @@ header.masthead {
 .sparkline { width: 100%; height: 70px; }
 .sparkline.bullish { color: var(--bullish); }
 .sparkline.bearish { color: var(--bearish); }
-
-/* ---------- QQQ Analysis tab ---------- */
-.qqq-lean-headline {
-  font-family: 'Inter', sans-serif; font-size: 38px; font-weight: 800;
-  color: var(--ink-dim); letter-spacing: -0.01em;
-}
-.qqq-lean-headline.bullish { color: var(--bullish); }
-.qqq-lean-headline.bearish { color: var(--bearish); }
-.qqq-tiers { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-top: 16px; }
-@media (max-width: 700px) { .qqq-tiers { grid-template-columns: 1fr; } }
-.qqq-tier { background: var(--panel-raised); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 14px 16px; font-size: 12.5px; line-height: 1.5; }
-.qqq-tier-label { font-family: 'Inter', sans-serif; font-weight: 700; font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--accent-strong); margin-bottom: 6px; }
 
 .trade-row { padding: 9px 0; border-bottom: 1px solid var(--border); font-size: 12px; }
 .trade-row:last-child { border-bottom: none; }
@@ -430,3 +418,46 @@ button.ghost:hover { color: #fff; background: var(--link); border-color: var(--l
 .picker-choose-card { margin-top: 8px; padding: 14px; border: 1px dashed var(--border-strong); border-radius: var(--radius-sm); display: flex; flex-direction: column; gap: 10px; }
 .picker-add { align-self: flex-start; }
 @media (max-width: 700px) { .day-cell { height: 46px; } }
+
+/* ---------- Backtest tab ---------- */
+.bt-pills { display: flex; flex-wrap: wrap; gap: 8px; margin: 14px 0; }
+.bt-pill { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; border-radius: var(--radius-sm); padding: 8px 14px; font-size: 12.5px; }
+.bt-pill.active { background: var(--link); color: #fff; border-color: var(--link); }
+.bt-pill-n { font-size: 10.5px; font-weight: 500; opacity: 0.8; }
+.bt-stats-title { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--accent-strong); margin: 14px 0 6px; }
+.bt-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+@media (max-width: 700px) { .bt-stats { grid-template-columns: 1fr; } }
+.bt-stat { background: var(--panel-raised); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 12px 14px; }
+.bt-stat-label { font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--ink-dim); }
+.bt-stat-value { font-size: 17px; font-weight: 800; margin-top: 4px; }
+.bt-stat-rate { font-weight: 600; color: var(--ink-dim); font-size: 13px; }
+.bt-stat-sub { font-size: 11.5px; color: var(--ink-dim); margin-top: 4px; }
+#bt-picks { margin-top: 16px; display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+@media (max-width: 900px) { #bt-picks { grid-template-columns: 1fr; } }
+#bt-picks > .empty-note { grid-column: 1 / -1; }
+.bt-pick { background: var(--panel); border: 1px solid var(--border); border-left: 4px solid var(--border-strong); border-radius: var(--radius-sm); padding: 14px 16px; }
+.bt-pick.right { border-left-color: var(--bullish); }
+.bt-pick.wrong { border-left-color: var(--bearish); }
+.bt-pick-top { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+.bt-pick-name { font-weight: 800; font-size: 15px; }
+.bt-dir { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; }
+.bt-dir.up { color: var(--bullish); }
+.bt-dir.down { color: var(--bearish); }
+.bt-verdict { margin: 12px 0 8px; font-weight: 700; font-size: 13px; padding: 8px 12px; border-radius: var(--radius-sm); }
+.bt-verdict.right { background: rgba(46, 158, 107, 0.12); color: #1d6e49; }
+.bt-verdict.wrong { background: rgba(214, 69, 80, 0.12); color: #a52d38; }
+.bt-pending { margin-top: 12px; font-size: 12.5px; color: var(--ink-dim); padding: 10px 12px; border: 1px dashed var(--border-strong); border-radius: var(--radius-sm); }
+.bt-returns { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 10px 0; }
+.bt-returns .stat-value { font-size: 16px; }
+.mini-bars { display: flex; gap: 8px; margin: 10px 0 4px; }
+.mini-bar-col { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 2px; }
+.mini-bar-half { width: 100%; height: 34px; display: flex; justify-content: center; }
+.mini-bar-half.top { align-items: flex-end; border-bottom: 1px solid var(--border-strong); }
+.mini-bar-half.bottom { align-items: flex-start; }
+.mini-bar { width: 60%; border-radius: 3px; }
+.mini-bar.up { background: var(--bullish); }
+.mini-bar.down { background: var(--bearish); }
+.mini-bar-val { font-family: 'IBM Plex Mono', monospace; font-size: 10px; font-weight: 600; }
+.mini-bar-day { font-size: 10.5px; color: var(--ink-dim); text-transform: uppercase; letter-spacing: 0.04em; }
+.bt-week-group { margin-top: 16px; }
+.bt-week-group-title { font-size: 12px; font-weight: 700; color: var(--accent-strong); margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.04em; }

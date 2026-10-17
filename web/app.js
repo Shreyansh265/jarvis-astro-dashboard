@@ -30,7 +30,6 @@ const dataCache = {
   ruleWeights: [],
   equityHistory: [],
   mistakes: [],
-  qqqCalls: [],
   horizonPicks: [],
   stockDetails: [],
   stockWatch: null,
@@ -38,6 +37,7 @@ const dataCache = {
   forecastDays: [],
   sectorUniverse: [],
   sectorWatch: [],
+  weeklyPicks: [],
 };
 
 // New-feature tables get their own .catch so a not-yet-applied schema or an
@@ -56,9 +56,9 @@ async function loadAll() {
   const marketSnapshotSince = daysAgoISO(120);
   const [
     latestLog, predictions, portfolio, paperAccount, recentTrades, weeklyReviews,
-    suggestedStocks, marketSnapshot, dailyBriefs, ruleWeights, equityHistory, mistakes, qqqCalls,
+    suggestedStocks, marketSnapshot, dailyBriefs, ruleWeights, equityHistory, mistakes,
     horizonPicks, stockDetails, stockWatch,
-    sectorForecast, forecastDays, sectorUniverse, sectorWatch,
+    sectorForecast, forecastDays, sectorUniverse, sectorWatch, weeklyPicks,
   ] = await Promise.all([
     SB.select("planetary_log", "order=date.desc&limit=1"),
     SB.select("predictions", "order=date.desc,created_at.desc&limit=40"),
@@ -77,7 +77,6 @@ async function loadAll() {
     SB.select("rule_weights", "order=weight.desc"),
     SB.select("equity_history", "order=date.asc&limit=90"),
     SB.select("predictions", "was_correct=eq.false&order=date.desc&limit=8"),
-    SB.select("qqq_daily_call", "order=call_date.desc&limit=90"),
     SB.select("horizon_picks", "order=period_start.desc,rank.asc&limit=60"),
     // Latest row per ticker is enough for "view details" -- bounded, not
     // full history (there's no need to keep every past day's snapshot
@@ -90,6 +89,7 @@ async function loadAll() {
     softSelect("forecast_days", `forecast_date=gte.${mondayOf(todayUtc())}&order=forecast_date.asc&limit=100`),
     softSelect("sector_universe", "order=sector.asc,ticker.asc&limit=500"),
     softSelect("sector_watch", "order=added_at.asc"),
+    softSelect("weekly_picks", "order=week_start.desc,rank.asc&limit=200"),
   ]);
 
   dataCache.latestLog = latestLog[0] || null;
@@ -104,7 +104,6 @@ async function loadAll() {
   dataCache.ruleWeights = ruleWeights;
   dataCache.equityHistory = equityHistory;
   dataCache.mistakes = mistakes;
-  dataCache.qqqCalls = qqqCalls;
   dataCache.horizonPicks = horizonPicks;
   dataCache.stockDetails = stockDetails;
   dataCache.stockWatch = stockWatch[0] || null;
@@ -112,13 +111,13 @@ async function loadAll() {
   dataCache.forecastDays = forecastDays;
   dataCache.sectorUniverse = sectorUniverse;
   dataCache.sectorWatch = sectorWatch;
+  dataCache.weeklyPicks = weeklyPicks;
 
   // Dashboard tab
   renderBrief();
   renderMovers();
   renderPortfolioPreview();
   renderPicksPreview();
-  renderQqqCallPreview();
   renderHorizonPreview();
 
   // This Week's Signals tab
@@ -134,8 +133,8 @@ async function loadAll() {
   // Portfolio tab
   renderPortfolioTable();
 
-  // QQQ Analysis tab
-  renderQqqAnalysis();
+  // Backtest tab
+  renderBacktestTab();
 
   // Graha 2.0 tab
   renderPaperTrading();
@@ -211,17 +210,6 @@ function renderPicksPreview() {
       <span class="holding-meta">${(r.sector || "").replace(/_/g, " ")}</span>
     </div>
   `).join("");
-}
-
-function renderQqqCallPreview() {
-  const el = document.getElementById("qqq-call-preview");
-  const latest = dataCache.qqqCalls[0];
-  if (!latest) { el.innerHTML = `<p class="empty-note">No QQQ call yet today.</p>`; return; }
-  const leanClass = latest.combined_lean === "call" ? "bullish" : (latest.combined_lean === "put" ? "bearish" : "");
-  el.innerHTML = `
-    <div class="qqq-lean-headline ${leanClass}" style="font-size:26px">${(latest.combined_lean || "neutral").toUpperCase()}</div>
-    <div class="holding-meta">astro ${latest.astro_bias || "—"} (${latest.astro_confidence != null ? latest.astro_confidence + "%" : "—"}) · technical ${latest.technical_bias || "—"}</div>
-  `;
 }
 
 function renderHorizonPreview() {
