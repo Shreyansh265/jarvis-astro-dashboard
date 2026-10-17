@@ -122,12 +122,26 @@
 
       <!-- ============ SIGNALS ============ -->
       <section class="tab-pane" id="tab-signals">
-        <div class="panel orrery-panel">
-          <div id="orrery-container"></div>
+        <div class="panel">
+          <div class="panel-head-row">
+            <h2>Your Week, Day by Day</h2>
+            <div class="week-toggle">
+              <button type="button" class="ghost" data-week-offset="0">This week</button>
+              <button type="button" class="ghost" data-week-offset="1">Next week</button>
+            </div>
+          </div>
+          <div class="empty-note movers-note" id="week-range"></div>
+          <div class="empty-note movers-note">Each box is one trading day for a sector (or a stock inside it). Green ▲ means the sky leans up, red ▼ leans down — darker means stronger. Most sector conditions last weeks, so many weeks look steady; the sky changes that do happen are listed first. This is an astrological lean, not a price prediction.</div>
+          <div id="week-events"></div>
+          <div id="week-grid"></div>
+          <div id="week-detail"></div>
         </div>
         <div class="panel">
-          <h2>This Week's Astrological Signals</h2>
-          <div class="sector-grid" id="sector-grid"></div>
+          <h2>Add a Sector or Stock</h2>
+          <div id="sector-picker"></div>
+        </div>
+        <div class="panel orrery-panel">
+          <div id="orrery-container"></div>
         </div>
         <div class="panel">
           <h2>Today's Aspects</h2>
@@ -398,6 +412,7 @@
 <script src="chat.js"></script>
 <script src="tabs.js"></script>
 <script src="signals-stocks.js"></script>
+<script src="forecast.js"></script>
 <script src="trading-learning.js"></script>
 <script src="qqq.js"></script>
 <script src="admin.js"></script>

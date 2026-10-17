@@ -23,7 +23,9 @@ from ephemeris import get_positions, get_aspects
 import plain_reasons as pr
 import trading_calendar as cal
 
-DEFAULT_DAYS = 14
+# 21 days so "next week" is fully covered whatever weekday the job runs on
+# (14 would leave next Tue-Fri missing when run on a Tuesday). Pure compute.
+DEFAULT_DAYS = 21
 
 
 def _noon_utc(d: date) -> datetime:

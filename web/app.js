@@ -34,7 +34,17 @@ const dataCache = {
   horizonPicks: [],
   stockDetails: [],
   stockWatch: null,
+  sectorForecast: [],
+  forecastDays: [],
+  sectorUniverse: [],
+  sectorWatch: [],
 };
+
+// New-feature tables get their own .catch so a not-yet-applied schema or an
+// empty table can never reject the shared Promise.all and blank the dashboard.
+function softSelect(table, query) {
+  return SB.select(table, query).catch(() => []);
+}
 
 function daysAgoISO(days) {
   const d = new Date();
@@ -48,6 +58,7 @@ async function loadAll() {
     latestLog, predictions, portfolio, paperAccount, recentTrades, weeklyReviews,
     suggestedStocks, marketSnapshot, dailyBriefs, ruleWeights, equityHistory, mistakes, qqqCalls,
     horizonPicks, stockDetails, stockWatch,
+    sectorForecast, forecastDays, sectorUniverse, sectorWatch,
   ] = await Promise.all([
     SB.select("planetary_log", "order=date.desc&limit=1"),
     SB.select("predictions", "order=date.desc,created_at.desc&limit=40"),
@@ -75,6 +86,10 @@ async function loadAll() {
     // RLS already scopes this to just the caller's own row -- limit=1 is
     // a safety cap, same as paper_account above, not a real filter.
     SB.select("stock_watch", "limit=1"),
+    softSelect("sector_forecast", `forecast_date=gte.${mondayOf(todayUtc())}&order=forecast_date.asc&limit=1000`),
+    softSelect("forecast_days", `forecast_date=gte.${mondayOf(todayUtc())}&order=forecast_date.asc&limit=100`),
+    softSelect("sector_universe", "order=sector.asc,ticker.asc&limit=500"),
+    softSelect("sector_watch", "order=added_at.asc"),
   ]);
 
   dataCache.latestLog = latestLog[0] || null;
@@ -93,6 +108,10 @@ async function loadAll() {
   dataCache.horizonPicks = horizonPicks;
   dataCache.stockDetails = stockDetails;
   dataCache.stockWatch = stockWatch[0] || null;
+  dataCache.sectorForecast = sectorForecast;
+  dataCache.forecastDays = forecastDays;
+  dataCache.sectorUniverse = sectorUniverse;
+  dataCache.sectorWatch = sectorWatch;
 
   // Dashboard tab
   renderBrief();
@@ -104,7 +123,7 @@ async function loadAll() {
 
   // This Week's Signals tab
   if (dataCache.latestLog) renderZodiacWheel(document.getElementById("orrery-container"), dataCache.latestLog.positions);
-  renderSectorCards();
+  renderWeekTab();
   renderAspects();
 
   // Astro Signals tab

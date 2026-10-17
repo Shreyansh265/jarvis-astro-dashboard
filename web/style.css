@@ -372,3 +372,61 @@ button.ghost:hover { color: #fff; background: var(--link); border-color: var(--l
 .news-item:last-child { border-bottom: none; }
 .news-item a { color: var(--link); text-decoration: none; font-weight: 600; }
 .news-item a:hover { text-decoration: underline; }
+
+/* ---------- This Week's Signals: day-by-day sector view ---------- */
+.week-toggle { display: flex; gap: 6px; }
+.week-toggle button.active { background: var(--link); color: #fff; border-color: var(--link); }
+.week-events-title { font-weight: 700; font-size: 12px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--accent-strong); margin: 14px 0 6px; }
+.week-events-list { margin: 0 0 14px; padding-left: 18px; font-size: 13px; color: var(--ink); line-height: 1.7; }
+#week-grid { overflow-x: auto; padding-bottom: 4px; }
+.week-empty { text-align: center; padding: 24px 12px; }
+.week-empty p { color: var(--ink-dim); font-size: 13px; margin: 0 0 12px; }
+.week-head, .week-row { display: grid; grid-template-columns: minmax(150px, 1.4fr) repeat(5, minmax(56px, 1fr)) 28px; gap: 6px; align-items: center; min-width: 560px; }
+.week-head { margin-top: 10px; }
+.week-head-day { text-align: center; font-size: 11px; font-weight: 700; color: var(--ink-dim); text-transform: uppercase; letter-spacing: 0.04em; }
+.week-head-day.today { color: var(--accent-strong); }
+.week-row-wrap { margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--border); }
+.week-row-label { font-weight: 700; font-size: 14px; }
+.week-badge { font-weight: 500; font-size: 10.5px; color: var(--ink-dim); margin-top: 2px; line-height: 1.3; }
+.week-badge-sector { color: var(--accent-strong); }
+.week-ticker { font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: var(--ink-dim); font-weight: 500; }
+.week-row-summary { font-size: 12px; color: var(--ink-dim); margin-top: 6px; min-width: 560px; }
+.day-cell {
+  height: 52px; padding: 0; border-radius: var(--radius-sm); border: 1px solid var(--border);
+  background: var(--panel-raised); color: var(--ink-dim);
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px;
+  font-weight: 700; cursor: pointer; transition: transform 0.12s, box-shadow 0.12s;
+}
+.day-cell:hover { transform: translateY(-2px); box-shadow: var(--shadow-hover); background: var(--panel-raised); }
+.day-cell .day-arrow { font-size: 17px; line-height: 1; }
+.day-cell .day-strength { font-family: 'IBM Plex Mono', monospace; font-size: 10px; font-weight: 600; opacity: 0.85; }
+.day-cell.state-bullish { background: rgba(46, 158, 107, var(--tint)); border-color: rgba(46, 158, 107, 0.5); color: #1d6e49; }
+.day-cell.state-bearish { background: rgba(214, 69, 80, var(--tint)); border-color: rgba(214, 69, 80, 0.5); color: #a52d38; }
+.day-cell.state-mixed { background: rgba(232, 134, 61, var(--tint)); border-color: rgba(232, 134, 61, 0.5); color: var(--accent-strong); }
+.day-cell.state-closed, .day-cell.state-unknown { opacity: 0.5; cursor: default; }
+.day-cell.is-today { box-shadow: 0 0 0 2px var(--accent); }
+.day-cell.selected { outline: 2px solid var(--link); outline-offset: 1px; }
+.week-remove { width: 26px; height: 26px; padding: 0; border-radius: 50%; background: transparent; color: var(--ink-dim); border: 1px solid var(--border); font-size: 16px; line-height: 1; }
+.week-remove:hover { background: var(--bearish); color: #fff; border-color: var(--bearish); }
+.week-legend { font-size: 11px; color: var(--ink-dim); margin-top: 14px; }
+.week-detail-card { margin-top: 16px; padding: 16px; border-radius: var(--radius-sm); border: 1px solid var(--border); border-left: 4px solid var(--border-strong); background: var(--panel-raised); }
+.week-detail-card.state-bullish { border-left-color: var(--bullish); }
+.week-detail-card.state-bearish { border-left-color: var(--bearish); }
+.week-detail-card.state-mixed { border-left-color: var(--accent); }
+.week-detail-title { font-weight: 800; font-size: 15px; }
+.week-detail-status { font-size: 13.5px; margin: 6px 0 10px; }
+.week-detail-sub { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--accent-strong); margin-bottom: 6px; }
+.reason-chips { list-style: none; margin: 0 0 10px; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.reason-chip { background: var(--panel); border: 1px solid var(--border); border-radius: 999px; padding: 7px 14px; font-size: 12.5px; line-height: 1.4; }
+.week-caveat { font-size: 12px; color: var(--ink-dim); margin-top: 10px; padding-top: 10px; border-top: 1px dashed var(--border-strong); }
+.week-etf { font-size: 12.5px; margin-top: 8px; }
+.picker-group { margin-bottom: 12px; }
+.picker-group-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--ink-dim); margin-bottom: 6px; }
+.picker-chips, .picker-stocks { display: flex; flex-wrap: wrap; gap: 8px; }
+.picker-chip { background: var(--panel); color: var(--ink); border: 1px solid var(--border-strong); border-radius: 999px; padding: 8px 14px; font-size: 12.5px; font-weight: 600; }
+.picker-chip:hover { background: var(--panel-raised); }
+.picker-chip.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+.picker-chip:disabled, .picker-add:disabled { opacity: 0.45; cursor: default; }
+.picker-choose-card { margin-top: 8px; padding: 14px; border: 1px dashed var(--border-strong); border-radius: var(--radius-sm); display: flex; flex-direction: column; gap: 10px; }
+.picker-add { align-self: flex-start; }
+@media (max-width: 700px) { .day-cell { height: 46px; } }
