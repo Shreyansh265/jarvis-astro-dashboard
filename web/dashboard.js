@@ -15,9 +15,9 @@ function _analogHtml(key) {
     return `<div class="poised-analog">${tag}<br>No verifiable past example: ${escapeHtml(a.unverifiable_reason || "none found")}.</div>`;
   }
   const pct = Number(a.pct_move);
-  let verdict = "";
-  if (a.condition === "exalted") verdict = pct > 0 ? " — in line with the lean" : " — against the lean";
-  if (a.condition === "debilitated") verdict = pct < 0 ? " — in line with the lean" : " — against the lean";
+  // Only an exalted (bullish) setup has a clear "expected up" to compare with;
+  // for other conditions the move is shown without a verdict.
+  const verdict = a.condition === "exalted" ? (pct > 0 ? " — in line with the lean" : " — against the lean") : "";
   const rule = (a.rule_n && a.rule_hit_rate !== null && a.rule_hit_rate !== undefined)
     ? `<br>Overall, this kind of setup pointed the right way in ${Math.round(a.rule_hit_rate * 100)}% of ${a.rule_n} independent weeks checked${a.rule_n < 10 ? " (small sample)" : ""}.` : "";
   return `<div class="poised-analog">${tag}<br>

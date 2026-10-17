@@ -61,7 +61,7 @@ def build_forecast(rule_weights: dict, start: date, days: int = DEFAULT_DAYS,
             real = [p for p in planets
                     if pr.planet_condition(p, pos) != "neutral"
                     and not (p in pr.NODES and pr.planet_condition(p, pos) == "retrograde")]
-            lead = pr.lead_condition(planets, pos)
+            lead = pr.lead_condition(planets, pos, sig["direction"])
             sector_rows.append({
                 "forecast_date": d.isoformat(), "sector": sector,
                 "direction": sig["direction"],

@@ -132,16 +132,20 @@ def sector_plain_reasons(sector: str, contributing_planets: list, pos: dict,
     return out[:limit]
 
 
-def lead_condition(contributing_planets: list, pos: dict):
-    """The planet whose condition most deserves a historical example:
-    exalted/debilitated beats a real retrograde beats node background.
+def lead_condition(contributing_planets: list, pos: dict, direction: str = None):
+    """The planet whose condition most deserves a historical example. Among
+    non-neutral conditions, one that points the SAME way as the sector's
+    direction wins (exalted for bullish, debilitated for bearish) so the
+    example actually illustrates the lean being shown; then exalted/
+    debilitated beats a real retrograde beats node background.
     Returns (planet, condition, sign, is_retrograde) or None."""
+    aligned = {"bullish": "exalted", "bearish": "debilitated"}.get(direction)
     best = None
     for planet in contributing_planets:
         cond = planet_condition(planet, pos)
         if cond == "neutral":
             continue
-        key = _priority(cond, planet)
+        key = (0 if cond == aligned else 1, _priority(cond, planet))
         if best is None or key < best[0]:
             best = (key, planet, cond, pos[planet]["sign"], pos[planet]["is_retrograde"])
     if not best:

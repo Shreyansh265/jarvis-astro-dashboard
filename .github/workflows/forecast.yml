@@ -1,7 +1,12 @@
 name: Refresh Sector Forecast (manual)
 
 on:
-  workflow_dispatch: {}
+  workflow_dispatch:
+    inputs:
+      with_analogs:
+        description: 'Also refresh historical analogs (spends a few Twelve Data credits)'
+        type: boolean
+        default: false
 
 # Shares one concurrency group with every other Twelve Data / engine job so
 # overlapping runs queue instead of doubling the request rate.
@@ -27,4 +32,6 @@ jobs:
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+          TWELVE_DATA_API_KEY: ${{ secrets.TWELVE_DATA_API_KEY }}
+          WITH_ANALOGS: ${{ inputs.with_analogs && '1' || '0' }}
         run: python main_forecast.py
