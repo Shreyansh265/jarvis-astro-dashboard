@@ -30,6 +30,10 @@ Strategy (simple, transparent, and stated up front so it's auditable):
     stays in place on BOTH sides -- this isn't "trade regardless of
     confidence to force daily activity," it's "don't ignore the bearish
     half of your own convictions."
+  - Position size comes from EQUITY, not cash, and total open exposure (long +
+    short market value) is capped at MAX_GROSS_EXPOSURE x equity, so there is no
+    leverage. (Sizing from cash was a real bug: short proceeds inflate cash, so
+    each round of shorts made the next bigger -- one account held ~13x its equity.)
   - Both directions rank by confidence and fill up to MAX_POSITIONS total
     (long + short combined) as cash allows.
   - CLOSE a position (SELL for a long, COVER for a short) when EITHER:
@@ -65,6 +69,7 @@ import data_fetch
 BUY_THRESHOLD = 65
 SHORT_THRESHOLD = 65
 MAX_POSITIONS = 5
+MAX_GROSS_EXPOSURE = 1.0  # total open long+short market value <= 1x equity (no leverage)
 STOP_LOSS_PCT = 8.0     # magnitude only; direction depends on position_type
 TAKE_PROFIT_PCT = 15.0  # magnitude only; direction depends on position_type
 MAX_HOLD_DAYS = 20
@@ -79,6 +84,24 @@ def _get_open_positions(user_id: str):
         elif t["action"] in ("SELL", "COVER") and t.get("linked_buy_trade_id") in open_pos:
             del open_pos[t["linked_buy_trade_id"]]
     return open_pos
+
+
+def _equity_and_exposure(cash: float, open_positions: dict) -> tuple:
+    """(equity, gross_exposure) marking each open position to its latest price
+    (get_quote is cached per process, so positions already priced during the
+    exit check cost nothing; a failed quote falls back to the entry price).
+    Longs are assets, shorts are liabilities -- same convention as
+    _record_equity_snapshot."""
+    net, gross = 0.0, 0.0
+    for pos in open_positions.values():
+        try:
+            price = data_fetch.get_quote(pos["ticker"])["price"]
+        except Exception:
+            price = pos["price"]
+        mv = price * pos["quantity"]
+        gross += mv
+        net += mv if pos.get("position_type", "long") == "long" else -mv
+    return cash + net, gross
 
 
 def _pct_change(entry_price, current_price):
@@ -160,7 +183,13 @@ def run_daily_paper_trading_for_account(signals: dict, account: dict) -> list:
     #    candidates together by confidence, fill remaining slots either way.
     open_positions = _get_open_positions(user_id)
     slots_free = MAX_POSITIONS - len(open_positions)
-    if slots_free > 0 and cash > 500:
+    # Size from EQUITY, never from cash: opening a short credits cash with the
+    # sale proceeds, so sizing off cash let each round of shorts make the next
+    # round bigger (a live account's equity was ~$20k while it held ~$259k of
+    # shorts). Total open exposure is capped at MAX_GROSS_EXPOSURE x equity.
+    equity, gross_open = _equity_and_exposure(cash, open_positions)
+    exposure_budget = max(0.0, equity * MAX_GROSS_EXPOSURE - gross_open)
+    if slots_free > 0 and cash > 500 and exposure_budget > 500:
         long_candidates = [(sector, s, "long") for sector, s in signals.items()
                            if s["direction"] == "bullish" and s["possibility_indicator"] >= BUY_THRESHOLD]
         short_candidates = [(sector, s, "short") for sector, s in signals.items()
@@ -168,7 +197,7 @@ def run_daily_paper_trading_for_account(signals: dict, account: dict) -> list:
         candidates = sorted(long_candidates + short_candidates,
                              key=lambda x: -x[1]["possibility_indicator"])[:slots_free]
 
-        position_size = cash / max(1, len(candidates)) if candidates else 0
+        position_size = exposure_budget / max(1, len(candidates)) if candidates else 0
         for sector, sig, position_type in candidates:
             ticker = SECTOR_TICKERS.get(sector)
             if not ticker:
@@ -178,7 +207,8 @@ def run_daily_paper_trading_for_account(signals: dict, account: dict) -> list:
             except Exception as e:
                 log.append(f"Could not fetch price for {ticker}: {e}")
                 continue
-            qty = round(position_size / quote["price"], 4)
+            size = min(position_size, cash) if position_type == "long" else position_size
+            qty = round(size / quote["price"], 4)
             if qty <= 0:
                 continue
 
