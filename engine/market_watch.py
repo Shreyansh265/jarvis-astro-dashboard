@@ -11,6 +11,10 @@ import supabase_client as db
 import data_fetch
 from rulerships import SECTOR_TOP_STOCKS
 
+# Broad-market funds for the header strip (4 credits/day). Sentinel sector "Index";
+# the frontend keeps them out of the gainers/losers lists.
+INDEX_TICKERS = ["SPY", "QQQ", "DIA", "IWM"]
+
 
 def run_market_watch() -> list:
     today = date.today().isoformat()
@@ -20,6 +24,9 @@ def run_market_watch() -> list:
     for sector, tickers in SECTOR_TOP_STOCKS.items():
         for ticker in tickers:
             ticker_sector.setdefault(ticker, sector)
+
+    for ticker in INDEX_TICKERS:
+        ticker_sector.setdefault(ticker, "Index")
 
     # Also price whatever arbitrary tickers the user has manually added to
     # their real Portfolio (e.g. a holding like ORCL that isn't in our

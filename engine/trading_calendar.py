@@ -17,6 +17,11 @@ NYSE_HOLIDAYS = {
     date(2027, 11, 25), date(2027, 12, 24),
 }
 
+# Days the NYSE closes at 13:00 ET instead of 16:00 (day after Thanksgiving,
+# Christmas Eve when it's a weekday session). Verify against the NYSE holiday
+# calendar each January when extending this file.
+NYSE_EARLY_CLOSES = {date(2026, 11, 27), date(2026, 12, 24), date(2027, 11, 26)}
+
 
 def is_trading_day(d: date) -> bool:
     return d.weekday() < 5 and d not in NYSE_HOLIDAYS

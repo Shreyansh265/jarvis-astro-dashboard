@@ -194,7 +194,7 @@ function renderWeekTab() {
             const strength = fr && fr.has_signal ? Number(fr.strength || 0) : 0;
             const sel = weekState.selected && weekState.selected.key === r.key && weekState.selected.date === d;
             return `<button type="button" class="day-cell state-${st} ${d === today ? "is-today" : ""} ${sel ? "selected" : ""}"
-                      style="--tint:${(0.12 + strength / 100 * 0.5).toFixed(2)}"
+                      style="--tint:${(0.12 + strength / 100 * 0.38).toFixed(2)}"
                       data-cell-key="${r.key}" data-cell-date="${d}" title="${CELL_WORD[st]}">
                       <span class="day-arrow">${CELL_ARROW[st]}</span>
                       ${st === "bullish" || st === "bearish" || st === "mixed" ? `<span class="day-strength">${Math.round(strength)}</span>` : ""}

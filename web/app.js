@@ -20,6 +20,7 @@ function safeHttpUrl(url) {
 const dataCache = {
   latestLog: null,
   latestPredictions: [],
+  recentPredictions: [],
   portfolio: [],
   paperAccount: null,
   recentTrades: [],
@@ -91,6 +92,7 @@ async function loadAll() {
   ]);
 
   dataCache.latestLog = latestLog[0] || null;
+  dataCache.recentPredictions = predictions;
   dataCache.latestPredictions = dedupeLatestPerSector(predictions);
   dataCache.portfolio = portfolio;
   dataCache.paperAccount = paperAccount[0] || null;
@@ -111,6 +113,7 @@ async function loadAll() {
   dataCache.analogCache = Object.fromEntries(analogRows.map(r => [r.key, r.payload]));
 
   // Dashboard tab
+  renderTickerTape();
   renderBrief();
   renderMovers();
   renderPortfolioPreview();
@@ -168,7 +171,8 @@ function renderMovers() {
     return;
   }
   const latestDate = rows[0].date;
-  const today = rows.filter(r => r.date === latestDate && r.percent_change != null);
+  // "Index" rows feed the header strip, not the stock movers lists.
+  const today = rows.filter(r => r.date === latestDate && r.percent_change != null && r.sector !== "Index");
   const gainers = [...today].sort((a, b) => b.percent_change - a.percent_change).slice(0, 5);
   const losers = [...today].sort((a, b) => a.percent_change - b.percent_change).slice(0, 5);
 
@@ -176,7 +180,7 @@ function renderMovers() {
     <div class="mover-row">
       <span class="mover-ticker">${r.ticker}</span>
       <span class="holding-meta">${(r.sector || "").replace(/_/g, " ")}</span>
-      <span class="mover-pct ${r.percent_change >= 0 ? "bullish" : "bearish"}">${r.percent_change >= 0 ? "+" : ""}${r.percent_change}%</span>
+      <span class="mover-pct ${r.percent_change >= 0 ? "bullish" : "bearish"}">${r.percent_change >= 0 ? "▲ +" : "▼ "}${Number(r.percent_change).toFixed(2)}%</span>
       <span class="holding-meta">$${r.price}</span>
       <button class="ghost" data-add-ticker="${r.ticker}" data-add-price="${r.price}">+ portfolio</button>
     </div>`;

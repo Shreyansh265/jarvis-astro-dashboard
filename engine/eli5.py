@@ -44,7 +44,7 @@ def _describe_market_move(snapshot_rows: list) -> str:
     biggest = max(movers, key=lambda r: abs(r["percent_change"]))
     direction = "jumped up" if biggest["percent_change"] > 0 else "dropped down"
     return (f"The biggest single mover on Graha's watchlist today was {biggest['ticker']}, "
-            f"which {direction} {abs(biggest['percent_change'])}%.")
+            f"which {direction} {abs(biggest['percent_change']):.2f}%.")
 
 
 def run_eli5(sectors: dict, snapshot_rows: list) -> str:
