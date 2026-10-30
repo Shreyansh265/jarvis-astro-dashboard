@@ -70,6 +70,14 @@ def score_pick(pick: dict, stock_bars: list, etf_bars: list, spy_bars: list):
     }
 
 
+def score_candidate(cand: dict, stock_bars: list):
+    """Pure. pick_candidates update dict (no benchmarks/closes), or None if pending."""
+    out = score_pick(cand, stock_bars, [], [])
+    if not out:
+        return None
+    return {k: out[k] for k in ("entry_price", "stock_return_pct", "was_correct", "status")}
+
+
 def fetch_window(ticker: str, week_start: str, week_end: str) -> list:
     """Daily bars for the week INCLUDING week_end (end_date is exclusive)."""
     end_exclusive = (date.fromisoformat(week_end) + timedelta(days=1)).isoformat()
@@ -81,6 +89,29 @@ def is_stale(pick: dict, today: date) -> bool:
     week_end = date.fromisoformat(pick["week_end"])
     first_after = cal.next_trading_days(week_end, 1, include_start=False)[0]
     return pick["status"] == "pending" and today > first_after
+
+
+def score_candidates(today_s: str, bars_for) -> int:
+    """Scores the logged Sunday candidates + random control. They are the null
+    comparison for the Pick of the Week, so a failure here is logged, not fatal."""
+    if not db.schema_ready(2):
+        return 0
+    try:
+        cands = db.select("pick_candidates", {"status": "eq.pending", "limit": "500"})
+    except Exception as e:
+        print(f"weekly_backtest: could not read pick_candidates: {e}")
+        return 0
+    done = 0
+    for c in cands:
+        if c["week_end"] > today_s:
+            continue
+        update = score_candidate(c, bars_for(c["ticker"], c["week_start"], c["week_end"]))
+        if not update:
+            continue
+        db.update("pick_candidates", {"id": f"eq.{c['id']}"}, update)
+        done += 1
+    print(f"weekly_backtest: scored {done} candidate/control row(s)")
+    return done
 
 
 def run_weekly_backtest(today=None) -> int:
@@ -119,6 +150,8 @@ def run_weekly_backtest(today=None) -> int:
         scored += 1
         word = {True: "RIGHT", False: "WRONG", None: "FLAT (no call)"}[update["was_correct"]]
         print(f"weekly_backtest: {p['ticker']} ({p['direction']}) week {ws}: {update['stock_return_pct']}% -> {word}")
+
+    score_candidates(today_s, bars_for)
 
     stale = [p for p in still_pending if is_stale(p, today_d)]
     if stale:

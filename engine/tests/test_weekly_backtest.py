@@ -97,6 +97,7 @@ def test_run_scores_once_per_window_and_skips_future(monkeypatch):
     monkeypatch.setattr(data_fetch, "get_time_series", fs)
     rows = [pick(), pick(id=2, ticker="GS", etf_ticker="XLF", week_start="2026-10-26", week_end="2026-10-30")]
     updates = []
+    monkeypatch.setattr(db, "schema_ready", lambda v=2: False)   # candidates path covered elsewhere
     monkeypatch.setattr(db, "select", lambda t, params=None: rows)
     monkeypatch.setattr(db, "update", lambda t, params, patch: updates.append((params, patch)))
     n = wb.run_weekly_backtest(date(2026, 10, 24))
@@ -114,6 +115,7 @@ def test_stale_detection_uses_trading_calendar():
 
 def test_run_fails_loudly_when_a_pick_stays_unscored(monkeypatch):
     monkeypatch.setattr(data_fetch, "get_time_series", fake_series({"UNH": STOCK[:-2], "XLV": [], "SPY": []}))
+    monkeypatch.setattr(db, "schema_ready", lambda v=2: False)
     monkeypatch.setattr(db, "select", lambda t, params=None: [pick()])
     monkeypatch.setattr(db, "update", lambda *a, **k: None)
     with pytest.raises(SystemExit) as e:

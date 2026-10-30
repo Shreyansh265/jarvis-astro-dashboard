@@ -7,6 +7,10 @@ on:
         description: 'Also refresh historical analogs (spends a few Twelve Data credits)'
         type: boolean
         default: false
+      picks_dry_run:
+        description: 'Dry-run the Pick of the Week for next week (prints candidates, writes nothing)'
+        type: boolean
+        default: false
 
 # Shares one concurrency group with every other Twelve Data / engine job so
 # overlapping runs queue instead of doubling the request rate.
@@ -35,3 +39,12 @@ jobs:
           TWELVE_DATA_API_KEY: ${{ secrets.TWELVE_DATA_API_KEY }}
           WITH_ANALOGS: ${{ inputs.with_analogs && '1' || '0' }}
         run: python main_forecast.py
+
+      - name: Pick of the Week dry run
+        if: ${{ inputs.picks_dry_run }}
+        working-directory: engine
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+          DRY_RUN: '1'
+        run: python -c "import weekly_picks; weekly_picks.create_weekly_picks()"

@@ -90,6 +90,19 @@ def transit_aspects(natal: dict, on_date: date) -> list:
     return out
 
 
+_NATURE_WORD = {"benefic": "a supportive planet", "malefic": "a challenging planet", "neutral": "a neutral planet"}
+_ASPECT_WORD = {"conjunct": "sits on", "trine": "forms a harmonious trine to",
+                "square": "forms a tense square to", "opposite": "opposes"}
+
+
+def describe_aspect(a: dict, company: str) -> str:
+    """One plain-English line for a transit aspect, prefixed by direction glyph."""
+    glyph = "▲" if a["points"] > 0 else "▼"
+    natal = "Sun (the company's core)" if a["natal"] == "Sun" else a["natal"]
+    return (f"{glyph} Transiting {a['transit']} ({_NATURE_WORD[a['nature']]}) {_ASPECT_WORD[a['aspect']]} "
+            f"{company}'s natal {natal}, {a['orb']:.1f}° from exact")
+
+
 def squash(raw: float) -> float:
     return round(math.tanh(raw / SCORE_SCALE) * 100, 1)
 

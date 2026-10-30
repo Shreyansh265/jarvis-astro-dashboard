@@ -13,6 +13,8 @@ if __name__ == "__main__":
     forecast.run_forecast()
     import company_chart
     company_chart.sync_company_charts()   # no-op (loudly) until schema v2 is applied
+    import stock_outlook
+    stock_outlook.run_stock_outlook()     # tracked tickers, zero credits
     if os.environ.get("WITH_ANALOGS") == "1":
         import analogs
         print(f"analogs refreshed: {analogs.refresh_analogs()}")
