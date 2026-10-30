@@ -893,3 +893,138 @@ create table if not exists portfolio_prices (
 alter table portfolio_prices enable row level security;
 drop policy if exists "public read portfolio_prices" on portfolio_prices;
 create policy "public read portfolio_prices" on portfolio_prices for select using (true);
+
+
+-- ===================================================================
+-- Schema v2: company-chart astrology, Pick of the Week, trader's desk.
+-- Idempotent. Engine jobs check schema_version >= 2 before using the new
+-- tables and skip those features (loudly) if it's missing, so the older jobs
+-- keep running until this file has been re-run.
+-- ===================================================================
+create table if not exists schema_version (
+    version integer primary key,
+    applied_at timestamptz not null default now()
+);
+alter table schema_version enable row level security;
+drop policy if exists "public read schema_version" on schema_version;
+create policy "public read schema_version" on schema_version for select using (true);
+insert into schema_version (version) values (2) on conflict (version) do nothing;
+
+-- Data repair: neutral predictions were always scored WRONG (0 of 75 live).
+-- A neutral call makes no directional claim, so it is "no call" (NULL), which
+-- the weekly review already excludes. Idempotent.
+update predictions set was_correct = null
+  where direction = 'neutral' and reviewed = true and was_correct is not null;
+
+-- A company's own chart: the first-trade date (regular open). 'verify' rows are
+-- shown in the UI but are NOT used for pick eligibility or the company weight
+-- until someone confirms the date. Seeded from engine/data/company_charts.csv.
+create table if not exists company_charts (
+    ticker text primary key,
+    name text,
+    first_trade_date date not null,
+    confidence text not null check (confidence in ('known','verify')),
+    time_basis text not null default 'regular_open',
+    note text,
+    updated_at timestamptz not null default now()
+);
+alter table company_charts enable row level security;
+drop policy if exists "public read company_charts" on company_charts;
+create policy "public read company_charts" on company_charts for select using (true);
+
+-- Per-stock daily forecast: company-chart transits blended with the sector
+-- signal. chart_basis says which one actually produced the reading ('sector'
+-- = no usable company chart, so it is only the sector signal). rules_version
+-- pins which pre-registered rule set produced a row so later edits never
+-- contaminate old rows.
+create table if not exists stock_forecast (
+    id bigint generated always as identity primary key,
+    ticker text not null,
+    forecast_date date not null,
+    direction text not null,
+    score numeric not null default 0,         -- composite, signed, -100..100
+    strength numeric not null default 0,      -- |score|, "signal alignment" (NOT a probability)
+    chart_basis text not null check (chart_basis in ('company','sector')),
+    factors jsonb not null default '{}'::jsonb,
+    rules_version text not null,
+    computed_at timestamptz not null default now(),
+    unique (ticker, forecast_date)
+);
+alter table stock_forecast enable row level security;
+drop policy if exists "public read stock_forecast" on stock_forecast;
+create policy "public read stock_forecast" on stock_forecast for select using (true);
+
+-- Trader's-desk inputs: indicators + a compact bar history for the chart.
+create table if not exists stock_technicals (
+    id bigint generated always as identity primary key,
+    ticker text not null,
+    as_of date not null,
+    close numeric, sma20 numeric, sma50 numeric, sma200 numeric,
+    rsi14 numeric, atr14 numeric, support numeric, resistance numeric,
+    trend text,
+    bars jsonb,                                -- last ~60 daily OHLC bars, for the SVG chart
+    computed_at timestamptz not null default now(),
+    unique (ticker, as_of)
+);
+alter table stock_technicals enable row level security;
+drop policy if exists "public read stock_technicals" on stock_technicals;
+create policy "public read stock_technicals" on stock_technicals for select using (true);
+
+-- Every Sunday's top candidates (plus a random same-sector control), ALL scored
+-- later: picking the best of ~100 noisy composites selects noise, so the pick is
+-- only meaningful next to the candidates it beat and a random stock.
+create table if not exists pick_candidates (
+    id bigint generated always as identity primary key,
+    week_start date not null,
+    week_end date not null,
+    ticker text not null,
+    sector text,
+    direction text not null check (direction in ('bullish','bearish')),
+    composite numeric not null,
+    sector_strength numeric,
+    company_score numeric,
+    chart_basis text not null check (chart_basis in ('company','sector')),
+    rank integer,
+    is_pick boolean not null default false,
+    is_random_control boolean not null default false,
+    rules_version text not null,
+    picked_at timestamptz not null default now(),
+    entry_price numeric,
+    stock_return_pct numeric,
+    was_correct boolean,
+    status text not null default 'pending' check (status in ('pending','complete')),
+    unique (week_start, ticker)
+);
+alter table pick_candidates enable row level security;
+drop policy if exists "public read pick_candidates" on pick_candidates;
+create policy "public read pick_candidates" on pick_candidates for select using (true);
+
+-- weekly_picks gains the Pick-of-the-Week flag and the frozen "why".
+alter table weekly_picks add column if not exists pick_of_week boolean not null default false;
+alter table weekly_picks add column if not exists factors jsonb;
+alter table weekly_picks add column if not exists trader_desk jsonb;
+alter table weekly_picks add column if not exists record_snapshot jsonb;
+alter table weekly_picks add column if not exists rules_version text;
+create unique index if not exists weekly_pick_one_per_week on weekly_picks (week_start) where pick_of_week;
+
+-- A frozen pick can't be edited after Sunday: only the scoring columns may
+-- change. Applies to every role including the service key.
+create or replace function weekly_picks_freeze() returns trigger
+language plpgsql as $$
+begin
+  if new.week_start is distinct from old.week_start or new.week_end is distinct from old.week_end
+     or new.ticker is distinct from old.ticker or new.sector is distinct from old.sector
+     or new.etf_ticker is distinct from old.etf_ticker or new.direction is distinct from old.direction
+     or new.rank is distinct from old.rank or new.strength is distinct from old.strength
+     or new.reasoning is distinct from old.reasoning or new.plain_reasons is distinct from old.plain_reasons
+     or new.picked_at is distinct from old.picked_at or new.pick_of_week is distinct from old.pick_of_week
+     or new.factors is distinct from old.factors or new.trader_desk is distinct from old.trader_desk
+     or new.record_snapshot is distinct from old.record_snapshot or new.rules_version is distinct from old.rules_version then
+    raise exception 'weekly_picks: a frozen pick cannot be edited (only scoring columns may change)';
+  end if;
+  return new;
+end;
+$$;
+drop trigger if exists weekly_picks_freeze_trg on weekly_picks;
+create trigger weekly_picks_freeze_trg before update on weekly_picks
+  for each row execute function weekly_picks_freeze();

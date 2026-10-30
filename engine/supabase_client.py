@@ -48,6 +48,22 @@ def update(table: str, params: dict, patch: dict) -> list:
     return resp.json()
 
 
+def schema_ready(min_version: int = 2) -> bool:
+    """True once supabase/schema.sql at `min_version` has been applied.
+
+    New-feature jobs call this first and skip themselves (loudly) when it's
+    False, so the older jobs keep running until the schema is re-run."""
+    try:
+        rows = select("schema_version", {"select": "version", "order": "version.desc", "limit": "1"})
+    except Exception as e:  # table missing -> PostgREST 404
+        print(f"schema_version unavailable ({e}); treating schema as pre-v{min_version}")
+        return False
+    ok = bool(rows) and int(rows[0]["version"]) >= min_version
+    if not ok:
+        print(f"SKIPPING: schema is older than v{min_version} -- re-run supabase/schema.sql")
+    return ok
+
+
 def upsert(table: str, rows, on_conflict: str) -> list:
     headers = {**HEADERS, "Prefer": f"resolution=merge-duplicates,return=representation"}
     resp = requests.post(_url(table), headers=headers,
