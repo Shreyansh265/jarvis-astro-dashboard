@@ -84,6 +84,9 @@
 
       <!-- ============ OVERVIEW ============ -->
       <section class="tab-pane active" id="tab-overview">
+        <div class="panel pick-hero" id="pick-hero-panel">
+          <div id="pick-hero"><p class="empty-note">Loading the Pick of the Week…</p></div>
+        </div>
         <div class="panel brief-panel">
           <h2>Graha's Brief</h2>
           <div id="eli5-brief" class="eli5-text"></div>
@@ -155,9 +158,17 @@
 
       <!-- ============ ASTRO SIGNALS ============ -->
       <section class="tab-pane" id="tab-stocks">
+        <div class="panel pick-hero">
+          <div id="pick-hero-signals"><p class="empty-note">Loading the Pick of the Week…</p></div>
+        </div>
+        <div class="panel">
+          <h2>Also on the Radar</h2>
+          <div class="empty-note movers-note">Sector lead stocks whose sky also cleared the weekly bar. Each is frozen on Sunday and scored after Friday's close alongside the pick, but only the Pick of the Week is Graha's one call.</div>
+          <div id="radar-list"></div>
+        </div>
         <div class="panel">
           <h2>Track a Stock — Full Astro Reading</h2>
-          <div class="empty-note movers-note">Pick any one ticker, not just Graha's curated list, and get its daily/weekly/monthly/yearly astrological read in one place. One tracked stock at a time -- adding a new one replaces it. The sector is your own call (Graha's free data plan can't auto-detect it for an arbitrary ticker), used only to pull that sector's real signals for this ticker.</div>
+          <div class="empty-note movers-note">Pick any one ticker, not just Graha's curated list, and get its daily/weekly/monthly/yearly astrological read in one place. Graha reads this week and next week for it (up or down, and why). One tracked stock at a time -- adding a new one replaces it. The sector is your own call (Graha's free data plan can't auto-detect it for an arbitrary ticker), used only to pull that sector's real signals for this ticker.</div>
 
           <form id="stock-watch-form">
             <div class="form-row">
@@ -215,8 +226,8 @@
           </div>
         </div>
         <div class="panel">
-          <h2>Astro Signals</h2>
-          <div class="empty-note movers-note">Every individual stock Graha has ever suggested within a signaled sector, with the price at the time it was suggested and its current (or closed-out) price.</div>
+          <h2>Past Suggestions (retired)</h2>
+          <div class="empty-note movers-note">The old open-ended stock suggestions, kept for the record. They were never closed out, so their "change" compares an old price with today's and is not a scored result — the Pick of the Week replaced them.</div>
           <div class="table-scroll">
             <table class="data-table" id="stocks-table">
               <thead>
@@ -321,9 +332,16 @@
       <!-- ============ BACKTEST ============ -->
       <section class="tab-pane" id="tab-backtest">
         <div class="panel">
-          <h2>Weekly Picks Report Card</h2>
-          <div class="empty-note movers-note">Every weekend Graha freezes its strongest sector picks for the coming week (one lead stock each, only when the sky signal is strong and consistent — so some weeks have few or none). After Friday's close each pick is scored against what really happened, Monday's open to Friday's close, next to the sector fund and the overall market. Only finished weeks show results.</div>
+          <div class="panel-head-row"><h2>Pick of the Week — Scored</h2><span class="fresh-badge" id="bt-fresh"></span></div>
+          <div class="empty-note movers-note">Each week's single pick is frozen on the weekend and scored after Friday's close, Monday's open to Friday's close. A hit counts only if the stock moved at least 0.3% — smaller moves are "no call". Every result is shown next to a coin flip, the market, the sector fund, a random stock from the same sector and the candidates it beat, because a pick that can't beat those means nothing.</div>
+          <div id="bt-pow-record"></div>
           <div class="bt-pills" id="bt-week-pills"></div>
+          <div id="bt-pow"></div>
+          <div id="bt-evidence"></div>
+        </div>
+        <div class="panel">
+          <h2>On the Radar — Report Card</h2>
+          <div class="empty-note movers-note">Every weekend Graha freezes its strongest sector picks for the coming week (one lead stock each, only when the sky signal is strong and consistent — so some weeks have few or none). After Friday's close each pick is scored against what really happened, Monday's open to Friday's close, next to the sector fund and the overall market. Only finished weeks show results.</div>
           <div id="bt-stats"></div>
           <div id="bt-picks"></div>
         </div>
@@ -362,6 +380,9 @@
     <!-- ============ PERSISTENT CHAT RAIL ============ -->
     <aside class="chat-rail panel">
       <h2>Ask Graha</h2>
+      <div class="chat-unavailable" id="chat-unavailable" hidden>
+        <strong>Unavailable for now.</strong> Ask Graha needs an AI service key that hasn't been set up yet. Everything else on the platform works without it — use the <em>why ▸</em> buttons next to any stock for the full reasoning.
+      </div>
       <div class="chat-log" id="chat-log"></div>
       <form id="chat-form" class="chat-input-row">
         <input id="chat-input" placeholder="Why is Financials bearish?">
@@ -400,6 +421,14 @@
   </div>
 </div>
 
+<div class="modal-backdrop" id="why-modal" hidden>
+  <div class="modal-panel why-panel" role="dialog" aria-modal="true" aria-labelledby="why-heading">
+    <button type="button" class="ghost modal-close" id="why-close">Close</button>
+    <div id="why-heading" class="why-heading">The whole reason, in plain English</div>
+    <div id="why-body"></div>
+  </div>
+</div>
+
 <div class="modal-backdrop" id="stock-detail-backdrop" hidden>
   <div class="modal-panel">
     <button class="ghost modal-close" id="stock-detail-close">close</button>
@@ -416,6 +445,7 @@
 <script src="signals-stocks.js"></script>
 <script src="chrome.js"></script>
 <script src="forecast.js"></script>
+<script src="pick.js"></script>
 <script src="dashboard.js"></script>
 <script src="trading-learning.js"></script>
 <script src="backtest.js"></script>

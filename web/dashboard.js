@@ -61,7 +61,7 @@ function renderTrackRecord() {
   const el = document.getElementById("track-record");
   if (!el) return;
   const shownWeeks = backtestWeekStarts();
-  const live = (dataCache.weeklyPicks || []).filter(p => p.status === "complete" && shownWeeks.includes(p.week_start));
+  const live = radarRows().filter(p => p.status === "complete" && shownWeeks.includes(mondayOf(p.week_start)));
   const ws = weeklyPickStats(live);
   const line = (label, s) => s.n
     ? `<div class="stat-tile"><div class="stat-label">${label}</div><div class="stat-value">${s.right} of ${s.n} right</div><div class="holding-meta">${Math.round(s.hitRate * 100)}%${s.excess === null ? "" : ` · ${s.excess >= 0 ? "+" : ""}${s.excess.toFixed(1)} pts vs market`}</div></div>`
@@ -74,13 +74,14 @@ function renderTrackRecord() {
   const wins = closed.filter(t => Number(t.pnl) > 0).length;
 
   el.innerHTML = `
+    ${recordHtml(recordOf(pickRows()))}
     <div class="trading-stats-row">
-      ${line("Weekly picks: expected UP", ws.bullish)}
-      ${line("Weekly picks: expected DOWN", ws.bearish)}
+      ${line("Radar picks: expected UP", ws.bullish)}
+      ${line("Radar picks: expected DOWN", ws.bearish)}
       <div class="stat-tile"><div class="stat-label">All suggestions so far</div>
         <div class="stat-value">${sug.length ? `${sugRight} of ${sug.length} right` : "—"}</div>
         <div class="holding-meta">${sug.length ? Math.round(sugRight / sug.length * 100) + "% (approx)" : "no priced suggestions yet"}</div></div>
     </div>
     <div class="holding-meta" style="margin-top:8px">Graha 2.0 paper trades: ${closed.length ? `${wins} of ${closed.length} recent closed trades were profitable` : "no closed trades yet"}.
-      Weekly picks cover recent weeks only; small samples say little either way.</div>`;
+      Radar picks cover recent weeks only; small samples say little either way.</div>`;
 }

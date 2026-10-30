@@ -4,6 +4,8 @@
 // is read-only from the browser and only written by the GitHub Actions jobs
 // using a separate, private service_role key that never touches this repo.
 window.JARVIS_CONFIG = {
+  // Flip to true once ANTHROPIC_API_KEY is set on the chat Edge Function.
+  CHAT_ENABLED: false,
   SUPABASE_URL: "https://upnxvtwsscchftwmtapm.supabase.co",
   SUPABASE_ANON_KEY: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVwbnh2dHdzc2NjaGZ0d210YXBtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQyNDc1MDcsImV4cCI6MjA5OTgyMzUwN30.Eedf4-JndZmgaPPyZWguwoYDgi9mgaKEOmC1hRmqmUU"
 };

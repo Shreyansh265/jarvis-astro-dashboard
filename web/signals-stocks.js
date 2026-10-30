@@ -120,7 +120,7 @@ async function renderStockWatch() {
   const dailyHtml = pred ? `
     <div class="detail-section">
       <h3>Daily</h3>
-      <div class="sector-direction ${pred.direction}">${escapeHtml(pred.direction)} · ${pred.possibility_indicator}%</div>
+      <div class="sector-direction ${pred.direction}">${escapeHtml(pred.direction)} · signal alignment ${pred.possibility_indicator}/100</div>
       <div class="sector-reason">${pred.plain_language_note ? _multiline(pred.plain_language_note) : escapeHtml((pred.reasons || []).slice(0, 3).join(" · "))}</div>
     </div>` : `
     <div class="detail-section">
@@ -148,10 +148,11 @@ async function renderStockWatch() {
   cardEl.innerHTML = `
     <div class="sector-card ${pred ? pred.direction : ""}">
       <div class="sector-card-top">
-        <span class="sector-name">${escapeHtml(watch.ticker)}</span>
+        <span class="sector-name">${escapeHtml(watch.ticker)} ${whyButton(watch.ticker, watch.sector)}</span>
         <span class="sector-ticker">${escapeHtml(_formatSector(watch.sector))}</span>
       </div>
       ${priceHtml}
+      ${stockWeeksHtml(watch.ticker, watch.sector)}
       ${dailyHtml}
       ${_horizonSectionHtml("weekly", "Weekly", weeklyRow)}
       ${_horizonSectionHtml("monthly", "Monthly", monthlyRow)}
@@ -258,7 +259,7 @@ function renderAstroStocks() {
     <tr class="${r.direction === "bullish" ? "row-bullish" : (r.direction === "bearish" ? "row-bearish" : "")}">
       <td>${r.date_suggested}</td>
       <td>${suggestedAt.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" })}</td>
-      <td>${r.ticker}</td>
+      <td>${escapeHtml(r.ticker)} ${whyButton(r.ticker, r.sector, "why")}</td>
       <td>${(r.sector || "").replace(/_/g, " ")}</td>
       <td class="${r.direction === "bullish" ? "bullish" : (r.direction === "bearish" ? "bearish" : "")}">${r.direction}</td>
       <td>${r.price_at_suggestion != null ? "$" + r.price_at_suggestion : "—"}</td>

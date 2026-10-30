@@ -6,9 +6,9 @@
 //  * Most sector conditions last weeks and only the Moon + aspects change
 //    day to day, so a steady week is shown as "steady", not five fake-
 //    distinct cards -- and the sky events that DO change are listed first.
-//  * A stock inherits its sector's forecast. There is no per-stock
-//    astrology, so stock rows carry a badge saying so and no separate
-//    confidence number.
+//  * A stock uses its sector's forecast, blended with its own company chart
+//    (first-trade date) when one is confirmed; rows say which they used
+//    ("sector only" vs "company chart + sector") and show no confidence number.
 //  * "No astrological signal" (including Silver, which has no rule at all)
 //    is its own state, never drawn as a flat neutral forecast.
 
@@ -68,6 +68,17 @@ function _forecastIndex() {
   const idx = new Map();
   for (const r of dataCache.sectorForecast) idx.set(`${r.sector}|${r.forecast_date}`, r);
   return idx;
+}
+
+// A tracked stock with its own computed outlook (company chart + sector) is shown
+// from that; otherwise it inherits its sector's row. Returns a sector-forecast-shaped row.
+function stockFcRow(ticker, sector, date, idx) {
+  const sf = (dataCache.stockForecast || []).find(r => r.ticker === ticker && r.forecast_date === date);
+  const base = idx.get(`${sector}|${date}`);
+  if (!sf || sf.chart_basis !== "company") return base;   // sector-only: identical to the sector's own row
+  return { ...(base || {}), forecast_date: date, sector, direction: sf.direction, strength: Number(sf.strength),
+           has_signal: sf.direction !== "neutral", basis: "company",
+           plain_reasons: (base && base.plain_reasons) || [] };
 }
 
 function _dayMeta(dateStr) {
@@ -182,14 +193,15 @@ function renderWeekTab() {
         ? (r.stockName === r.ticker ? escapeHtml(r.ticker) : `${escapeHtml(r.stockName)} <span class="week-ticker">${escapeHtml(r.ticker)}</span>`)
         : escapeHtml(sectorLabel(r.sector));
       const sub = r.ticker
-        ? `<div class="week-badge">Sector signal applied to ${escapeHtml(r.stockName)} (${escapeHtml(sectorLabel(r.sector))})</div>`
+        ? `<div class="week-badge">${(dataCache.stockForecast || []).some(x => x.ticker === r.ticker && x.chart_basis === "company")
+            ? `Company chart + ${escapeHtml(sectorLabel(r.sector))} sky` : `Sector only — ${escapeHtml(sectorLabel(r.sector))}'s signal`} ${whyButton(r.ticker, r.sector)}</div>`
         : `<div class="week-badge week-badge-sector">Whole sector</div>`;
       return `
       <div class="week-row-wrap">
         <div class="week-row">
           <div class="week-row-label">${title}${sub}</div>
           ${dates.map(d => {
-            const fr = idx.get(`${r.sector}|${d}`);
+            const fr = r.ticker ? stockFcRow(r.ticker, r.sector, d, idx) : idx.get(`${r.sector}|${d}`);
             const st = cellState(fr, _dayMeta(d));
             const strength = fr && fr.has_signal ? Number(fr.strength || 0) : 0;
             const sel = weekState.selected && weekState.selected.key === r.key && weekState.selected.date === d;
@@ -247,7 +259,7 @@ async function renderWeekDetail(rows, idx) {
     el.innerHTML = `<div class="empty-note">Tap any day above to see exactly why Graha reads it that way.</div>`;
     return;
   }
-  const fr = idx.get(`${r.sector}|${sel.date}`);
+  const fr = r.ticker ? stockFcRow(r.ticker, r.sector, sel.date, idx) : idx.get(`${r.sector}|${sel.date}`);
   const st = cellState(fr, _dayMeta(sel.date));
   const name = r.ticker ? (r.stockName === r.ticker ? r.ticker : `${r.stockName} (${r.ticker})`) : sectorLabel(r.sector);
   const chips = (fr && fr.plain_reasons || []).map(p => `<li class="reason-chip">${escapeHtml(p)}</li>`).join("");
@@ -260,7 +272,9 @@ async function renderWeekDetail(rows, idx) {
       ${chips ? `<div class="week-detail-sub">Why</div><ul class="reason-chips">${chips}</ul>` : ""}
       ${astro.length ? `<button type="button" class="ghost read-more-btn" id="week-astro-toggle">show the astrological reasoning</button>
         <div class="long-term-note" id="week-astro-detail" hidden>${escapeHtml(astro.join(" · "))}</div>` : ""}
-      ${r.ticker ? `<div class="week-caveat">Graha has no separate reading for ${escapeHtml(r.stockName)} — it shows its sector's signal. Individual stocks can move quite differently from their sector.</div>` : ""}
+      ${r.ticker ? `<div class="week-caveat">${fr && fr.basis === "company"
+        ? `This day blends ${escapeHtml(r.stockName)}'s own chart with its sector's sky — press <em>why</em> for the transits.`
+        : `No confirmed company chart for ${escapeHtml(r.stockName)}, so this is its sector's signal only. Individual stocks can move quite differently from their sector.`} ${whyButton(r.ticker, r.sector)}</div>` : ""}
       <div class="week-etf" id="week-etf"></div>
     </div>`;
   const tog = document.getElementById("week-astro-toggle");
@@ -381,7 +395,7 @@ function renderSectorPicker() {
       <input id="picker-search" type="search" autocomplete="off" spellcheck="false"
              placeholder="Search ${escapeHtml(sectorLabel(s))} stocks &amp; ETFs — name or ticker">
       <div id="picker-results"></div>
-      <div class="empty-note">A stock or fund uses its sector's signal — Graha doesn't read individual stocks separately.</div>
+      <div class="empty-note">A stock uses its sector's signal, blended with its own chart where Graha has a confirmed first-trade date (marked "Company chart" on its row). Funds always use the sector's signal.</div>
       <div class="form-error" id="picker-error"></div>
     </div>`;
   const input = document.getElementById("picker-search");

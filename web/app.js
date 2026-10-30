@@ -38,6 +38,9 @@ const dataCache = {
   weeklyPicks: [],
   portfolioPrices: [],
   analogCache: {},
+  companyCharts: {},
+  stockForecast: [],
+  pickCandidates: [],
 };
 
 // New-feature tables get their own .catch so a not-yet-applied schema or an
@@ -59,6 +62,7 @@ async function loadAll() {
     suggestedStocks, marketSnapshot, dailyBriefs, equityHistory,
     horizonPicks, stockDetails, stockWatch,
     sectorForecast, forecastDays, sectorUniverse, sectorWatch, weeklyPicks, portfolioPrices, analogRows,
+    companyCharts, stockForecast, pickCandidates, evidenceRows,
   ] = await Promise.all([
     SB.select("planetary_log", "order=date.desc&limit=1"),
     SB.select("predictions", "order=date.desc,created_at.desc&limit=40"),
@@ -89,6 +93,12 @@ async function loadAll() {
     softSelect("weekly_picks", "order=week_start.desc,rank.asc&limit=200"),
     softSelect("portfolio_prices", "limit=500"),
     softSelect("analog_cache", "limit=500"),
+    // Schema v2 tables: softSelect so the page still loads before the migration is applied.
+    softSelect("company_charts", "order=ticker.asc&limit=500"),
+    // Bulk rows stay slim; the per-day "factors" are fetched on demand by the why modal.
+    softSelect("stock_forecast", `forecast_date=gte.${mondayOf(todayUtc())}&select=ticker,forecast_date,direction,score,strength,chart_basis&order=forecast_date.asc&limit=1000`),
+    softSelect("pick_candidates", "order=week_start.desc&limit=400"),
+    softSelect("analog_cache", "key=like.evidence_*&limit=5"),
   ]);
 
   dataCache.latestLog = latestLog[0] || null;
@@ -110,9 +120,13 @@ async function loadAll() {
   dataCache.sectorWatch = sectorWatch;
   dataCache.weeklyPicks = weeklyPicks;
   dataCache.portfolioPrices = portfolioPrices;
-  dataCache.analogCache = Object.fromEntries(analogRows.map(r => [r.key, r.payload]));
+  dataCache.analogCache = Object.fromEntries(analogRows.concat(evidenceRows).map(r => [r.key, r.payload]));
+  dataCache.companyCharts = Object.fromEntries(companyCharts.map(r => [r.ticker, r]));
+  dataCache.stockForecast = stockForecast;
+  dataCache.pickCandidates = pickCandidates;
 
   // Dashboard tab
+  renderPickViews();
   renderTickerTape();
   renderBrief();
   renderMovers();
@@ -335,7 +349,7 @@ function openStockDetail(ticker) {
     <div class="detail-section">
       <h3>Macro / Sector Context</h3>
       <div class="empty-note movers-note">Grounded in this ticker's sector signal, not a real geopolitical event feed.</div>
-      ${detail.sector ? `<div class="sector-direction ${detail.sector_direction}">${detail.sector.replace(/_/g, " ")} — ${detail.sector_direction} (${detail.sector_possibility_indicator}%)</div>
+      ${detail.sector ? `<div class="sector-direction ${detail.sector_direction}">${detail.sector.replace(/_/g, " ")} — ${detail.sector_direction} (signal alignment ${detail.sector_possibility_indicator}/100)</div>
         <div class="sector-reason">${(detail.sector_reasons || []).join(" · ")}</div>
         ${detail.long_term_note ? `<div class="long-term-note">${detail.long_term_note}</div>` : ""}` : `<p class="empty-note">No sector context available for this ticker.</p>`}
     </div>
@@ -453,6 +467,14 @@ document.addEventListener("DOMContentLoaded", () => {
   setInterval(tickClock, 1000);
   document.getElementById("add-holding-form").addEventListener("submit", addHolding);
   document.getElementById("chat-form").addEventListener("submit", sendChat);
+  if (!window.JARVIS_CONFIG.CHAT_ENABLED) {
+    document.getElementById("chat-unavailable").hidden = false;
+    document.getElementById("chat-log").hidden = true;
+    const input = document.getElementById("chat-input");
+    input.disabled = true;
+    input.placeholder = "Ask Graha is unavailable for now";
+    document.querySelector("#chat-form button").disabled = true;
+  }
   document.getElementById("stock-detail-close").addEventListener("click", closeStockDetail);
   document.getElementById("stock-detail-backdrop").addEventListener("click", (e) => {
     if (e.target.id === "stock-detail-backdrop") closeStockDetail();

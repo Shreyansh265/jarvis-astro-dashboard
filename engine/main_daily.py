@@ -23,6 +23,7 @@ import supabase_client as db
 import data_fetch
 from rulerships import SECTOR_TICKERS
 import daily_review
+import os
 import stock_picks
 import market_watch
 import eli5
@@ -106,9 +107,15 @@ def main():
     except Exception as e:
         print(f"forecast failed: {e}")
 
-    suggested = stock_picks.run_stock_picks(out["sectors"])
-    if suggested:
-        print(f"Suggested {len(suggested)} new stock pick(s): {', '.join(suggested)}")
+    # RETIRED (Oct 2026): the open-ended "suggested stocks" stream never closed
+    # its suggestions, so its scoreboard compared old prices with today's and
+    # measured nothing. Replaced by the frozen, scored Pick of the Week
+    # (weekly_picks.py). Existing history stays visible, labelled as retired.
+    # Set LEGACY_STOCK_PICKS=1 to resume it.
+    if os.environ.get("LEGACY_STOCK_PICKS") == "1":
+        suggested = stock_picks.run_stock_picks(out["sectors"])
+        if suggested:
+            print(f"Suggested {len(suggested)} new stock pick(s): {', '.join(suggested)}")
 
     snapshot_rows = market_watch.run_market_watch()
     print(f"Market watch: priced {len(snapshot_rows)} watchlist ticker(s)")

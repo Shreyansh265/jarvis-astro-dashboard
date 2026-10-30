@@ -72,7 +72,7 @@ function weeklyPickStats(picks) {
   return out;
 }
 
-function _statsHtml(stats, title) {
+function _statsHtml(stats, title) {   // radar picks only
   const row = (label, s) => {
     if (!s.n) return `<div class="bt-stat"><div class="bt-stat-label">${label}</div><div class="bt-stat-value">—</div><div class="bt-stat-sub">no scored picks yet</div></div>`;
     return `<div class="bt-stat">
@@ -125,9 +125,10 @@ function _pickCard(p) {
   return `
     <div class="bt-pick ${up ? "up" : "down"} ${p.status === "complete" ? (p.was_correct === null ? "flat" : (p.was_correct ? "right" : "wrong")) : "pending"}">
       <div class="bt-pick-top">
-        <div><span class="bt-pick-name">${escapeHtml(_stockName(p.ticker))}</span> <span class="week-ticker">${escapeHtml(p.ticker)}</span></div>
+        <div><span class="bt-pick-name">${escapeHtml(stockDisplayName(p.ticker))}</span> <span class="week-ticker">${escapeHtml(p.ticker)}</span></div>
         <span class="bt-dir ${up ? "up" : "down"}">${up ? "▲ Expected UP" : "▼ Expected DOWN"}</span>
       </div>
+      <div>${whyButton(p.ticker, p.sector)}</div>
       <div class="week-badge">${escapeHtml(sectorLabel(p.sector))} · ${escapeHtml(picked)}</div>
       <div class="sector-reason">${escapeHtml(p.reasoning || "")}</div>
       ${reasons ? `<ul class="reason-chips">${reasons}</ul>` : ""}
@@ -140,19 +141,22 @@ function renderWeeklyPicksReport() {
   if (!el) return;
   const weeks = backtestWeekStarts();
   if (!backtestState.weekStart || !weeks.includes(backtestState.weekStart)) backtestState.weekStart = weeks[0];
-  const picks = dataCache.weeklyPicks || [];
+  const picks = radarRows();
+  const inWeek = (p, w) => mondayOf(p.week_start) === w;
 
   document.getElementById("bt-week-pills").innerHTML = weeks.map(w => {
-    const n = picks.filter(p => p.week_start === w).length;
-    return `<button type="button" class="ghost bt-pill ${w === backtestState.weekStart ? "active" : ""}" data-bt-week="${w}">${_weekLabel(w)}${w === weeks[0] ? " · current" : ""}<span class="bt-pill-n">${n ? n + " pick" + (n > 1 ? "s" : "") : "no picks"}</span></button>`;
+    const all = dataCache.weeklyPicks || [];
+    const hasPow = all.some(p => p.pick_of_week && inWeek(p, w));
+    const n = all.filter(p => inWeek(p, w)).length;
+    return `<button type="button" class="ghost bt-pill ${w === backtestState.weekStart ? "active" : ""}" data-bt-week="${w}">${_weekLabel(w)}${w === weeks[0] ? " · current" : ""}<span class="bt-pill-n">${hasPow ? "pick + " : ""}${n ? n + " frozen" : "none frozen"}</span></button>`;
   }).join("");
   document.querySelectorAll("[data-bt-week]").forEach(b => b.addEventListener("click", () => {
     backtestState.weekStart = b.dataset.btWeek;
-    renderWeeklyPicksReport();
+    renderBacktestTab();
   }));
 
-  const forWeek = picks.filter(p => p.week_start === backtestState.weekStart).sort((a, b) => (a.rank || 0) - (b.rank || 0));
-  const complete4 = picks.filter(p => p.status === "complete" && weeks.slice(1).concat(weeks[0]).includes(p.week_start));
+  const forWeek = picks.filter(p => inWeek(p, backtestState.weekStart)).sort((a, b) => (a.rank || 0) - (b.rank || 0));
+  const complete4 = picks.filter(p => p.status === "complete" && weeks.some(w => inWeek(p, w)));
   document.getElementById("bt-stats").innerHTML =
     _statsHtml(weeklyPickStats(forWeek), `Selected week (${_weekLabel(backtestState.weekStart)})`) +
     _statsHtml(weeklyPickStats(complete4), "All shown weeks combined");
@@ -160,7 +164,7 @@ function renderWeeklyPicksReport() {
   if (!forWeek.length) {
     el.innerHTML = `<p class="empty-note">${backtestState.weekStart > todayUtc()
       ? "This week's picks are frozen on the weekend — nothing recorded yet."
-      : "No strong picks were recorded for this week. Graha only picks sectors whose sky signal is strong and consistent across the week; on a quiet week that means none."}</p>`;
+      : "No radar picks were recorded for this week. Graha only picks sectors whose sky signal is strong and consistent across the week; on a quiet week that means none."}</p>`;
     return;
   }
   el.innerHTML = forWeek.map(_pickCard).join("");
@@ -211,7 +215,102 @@ function renderSuggestionHistory() {
   if (t) t.addEventListener("click", () => { backtestState.showAllSuggestions = !backtestState.showAllSuggestions; renderSuggestionHistory(); });
 }
 
+// ---------- Pick of the Week report ----------
+const FLAT_BAND = 0.3;   // mirrors engine/weekly_backtest.py FLAT_BAND_PCT
+
+function _callVerdict(direction, ret) {
+  if (ret === null || ret === undefined || Number.isNaN(Number(ret)) || Math.abs(Number(ret)) < FLAT_BAND) return null;
+  return direction === "bullish" ? Number(ret) > 0 : Number(ret) < 0;
+}
+
+function _verdictCell(v) { return v === null ? `<span class="bt-flat">— no call</span>` : (v ? `<span class="bullish">✔ right</span>` : `<span class="bearish">✘ wrong</span>`); }
+
+function _median(xs) {
+  if (!xs.length) return null;
+  const a = [...xs].sort((x, y) => x - y), m = Math.floor(a.length / 2);
+  return a.length % 2 ? a[m] : (a[m - 1] + a[m]) / 2;
+}
+
+function scoredThrough() {
+  const done = (dataCache.weeklyPicks || []).filter(p => p.status === "complete").map(p => p.week_end).sort();
+  return done.length ? done[done.length - 1] : null;
+}
+
+function renderFreshness() {
+  const el = document.getElementById("bt-fresh");
+  if (!el) return;
+  const through = scoredThrough();
+  const today = todayUtc();
+  const late = (dataCache.weeklyPicks || []).filter(p => p.status === "pending" && p.week_end < today &&
+    (new Date(today) - new Date(p.week_end)) / 864e5 >= 4);
+  el.className = `fresh-badge ${late.length ? "late" : ""}`;
+  el.textContent = late.length
+    ? `⚠ Scoring is late: ${late.length} finished pick${late.length > 1 ? "s" : ""} still unscored`
+    : (through ? `Scored through ${_dayLabel(through)}` : "Nothing scored yet");
+}
+
+function _nullRow(label, sub, ret, direction, extra = "") {
+  return `<tr><td>${label}${sub ? `<div class="holding-meta">${sub}</div>` : ""}</td>
+    <td class="${_pctClass(ret)}">${ret === null || ret === undefined ? "—" : _pct(ret)}${extra}</td>
+    <td>${ret === null || ret === undefined ? "—" : _verdictCell(_callVerdict(direction, ret))}</td></tr>`;
+}
+
+function renderPickOfWeekReport() {
+  const recEl = document.getElementById("bt-pow-record");
+  const el = document.getElementById("bt-pow");
+  const evEl = document.getElementById("bt-evidence");
+  if (!el) return;
+  const weeks = backtestWeekStarts();
+  if (!backtestState.weekStart || !weeks.includes(backtestState.weekStart)) backtestState.weekStart = weeks[0];
+  const rows = pickRows();
+  recEl.innerHTML = recordHtml(recordOf(rows));
+  evEl.innerHTML = evidenceHtml();
+
+  const week = backtestState.weekStart;
+  const pick = rows.find(p => mondayOf(p.week_start) === week);
+  if (!pick) {
+    el.innerHTML = `<p class="empty-note">${week > todayUtc() ? "This week's pick is frozen on the weekend — nothing recorded yet."
+      : "Graha named no Pick of the Week for this week. It only names one when a sector's sky is strong and consistent and the stock's own chart doesn't contradict it, and it never pads a quiet week."}</p>`;
+    return;
+  }
+  const cands = (dataCache.pickCandidates || []).filter(c => mondayOf(c.week_start) === week);
+  const control = cands.find(c => c.is_random_control);
+  const others = cands.filter(c => !c.is_pick && !c.is_random_control && c.status === "complete" && c.stock_return_pct !== null);
+  const medOthers = _median(others.map(c => Number(c.stock_return_pct)));
+  const complete = pick.status === "complete";
+
+  let nullTable = "";
+  if (complete) {
+    const dir = pick.direction;
+    nullTable = `<div class="table-scroll"><table class="data-table null-table"><thead><tr><th>Benchmark for the same call (${dir === "bullish" ? "▲ up" : "▼ down"})</th><th>Week return</th><th>Would it have been…</th></tr></thead><tbody>
+      ${_nullRow(`<strong>Graha's pick</strong> — ${escapeHtml(pick.ticker)}`, "", pick.stock_return_pct === null ? null : Number(pick.stock_return_pct), dir)}
+      ${_nullRow("Market (SPY)", "", pick.spy_return_pct === null ? null : Number(pick.spy_return_pct), dir)}
+      ${_nullRow(`Sector fund (${escapeHtml(pick.etf_ticker || "—")})`, "", pick.etf_return_pct === null ? null : Number(pick.etf_return_pct), dir)}
+      ${control ? (control.status === "complete"
+          ? _nullRow(`Random ${escapeHtml(sectorLabel(pick.sector))} stock (${escapeHtml(control.ticker)})`, "drawn at random on Sunday — does picking beat luck within the sector?", control.stock_return_pct === null ? null : Number(control.stock_return_pct), dir)
+          : `<tr><td>Random ${escapeHtml(sectorLabel(pick.sector))} stock (${escapeHtml(control.ticker)})</td><td colspan="2" class="holding-meta">not scored yet</td></tr>`) : ""}
+      ${medOthers !== null ? _nullRow(`Median of the other ${others.length} top candidate${others.length === 1 ? "" : "s"}`, "stocks Graha weighed and passed over", medOthers, dir) : ""}
+      <tr><td>A coin flip</td><td class="holding-meta">—</td><td class="holding-meta">right half the time, by definition</td></tr>
+    </tbody></table></div>
+    <div class="holding-meta">If the pick doesn't do better than these over many weeks, the astrology added nothing. One week proves nothing either way.</div>`;
+  }
+
+  const candTable = cands.length ? `<details class="cand-details"><summary>The ${cands.filter(c => !c.is_random_control).length} candidates Graha weighed this week</summary>
+    <div class="table-scroll"><table class="data-table"><thead><tr><th>#</th><th>Stock</th><th>Call</th><th>Signal alignment</th><th>Basis</th><th>Week return</th><th></th></tr></thead><tbody>
+    ${cands.sort((a, b) => (a.is_random_control - b.is_random_control) || (a.rank || 99) - (b.rank || 99)).map(c => `<tr class="${c.is_pick ? "row-pick" : ""}">
+      <td>${c.is_random_control ? "ctl" : (c.rank ?? "")}</td><td>${escapeHtml(c.ticker)} <span class="holding-meta">${escapeHtml(stockDisplayName(c.ticker))}</span>${c.is_random_control ? ` <span class="picker-kind">random control</span>` : ""}${c.is_pick ? ` <span class="picker-kind">pick</span>` : ""}</td>
+      <td>${c.direction === "bullish" ? "▲ up" : "▼ down"}</td><td>${Math.abs(Number(c.composite)).toFixed(0)}</td>
+      <td>${c.chart_basis === "company" ? "company + sector" : "sector only"}</td>
+      <td class="${_pctClass(c.stock_return_pct)}">${c.status === "complete" ? _pct(c.stock_return_pct) : "pending"}</td>
+      <td>${c.status === "complete" ? _verdictCell(c.was_correct) : ""}</td></tr>`).join("")}
+    </tbody></table></div></details>` : "";
+
+  el.innerHTML = `${_pickCard(pick)}${nullTable}${candTable}`;
+}
+
 function renderBacktestTab() {
+  renderFreshness();
+  renderPickOfWeekReport();
   renderWeeklyPicksReport();
   renderSuggestionHistory();
 }

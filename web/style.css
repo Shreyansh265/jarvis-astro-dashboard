@@ -565,3 +565,116 @@ button.ghost:hover { color: var(--on-link); background: var(--link); border-colo
 .tape-item .tk { font-weight: 700; color: var(--ink); }
 .tape-item .px { color: var(--ink-dim); }
 .tape-asof { margin-left: auto; padding: 7px 12px; font-size: 10.5px; color: var(--ink-dim); letter-spacing: 0.04em; text-transform: uppercase; }
+
+/* ---------- Pick of the Week hero ---------- */
+.pick-hero { padding: 0; background: transparent; border: none; box-shadow: none; }
+.pick-hero-card, .pick-empty {
+  background: var(--panel); border: 1px solid var(--border); border-left: 4px solid var(--border-strong);
+  border-radius: var(--radius); padding: 18px 20px; box-shadow: var(--shadow-card);
+}
+.pick-hero-card.up { border-left-color: var(--bullish); }
+.pick-hero-card.down { border-left-color: var(--bearish); }
+.pick-kicker { font-family: 'IBM Plex Mono', monospace; font-size: 11px; letter-spacing: 0.08em; color: var(--accent-strong); font-weight: 600; }
+.stale-tag { color: var(--ink-dim); font-weight: 500; letter-spacing: 0; text-transform: none; margin-left: 6px; }
+.pick-main { display: flex; justify-content: space-between; align-items: center; gap: 16px; flex-wrap: wrap; margin: 8px 0 10px; }
+.pick-ticker { font-family: 'IBM Plex Mono', monospace; font-size: 30px; font-weight: 700; letter-spacing: 0.02em; }
+.pick-name { font-size: 16px; font-weight: 600; margin-left: 8px; }
+.pick-sector { display: inline-block; margin-left: 8px; font-size: 12px; color: var(--ink-dim); }
+.pick-call { font-family: 'IBM Plex Mono', monospace; font-size: 26px; font-weight: 700; padding: 6px 14px; border: 1px solid; border-radius: var(--radius-sm); font-variant-numeric: tabular-nums; }
+.pick-call.up { color: var(--bullish); border-color: rgba(var(--bull-rgb), 0.55); background: rgba(var(--bull-rgb), 0.1); }
+.pick-call.down { color: var(--bearish); border-color: rgba(var(--bear-rgb), 0.55); background: rgba(var(--bear-rgb), 0.1); }
+.pick-call-sub { font-size: 12px; font-weight: 500; color: var(--ink-dim); }
+.pick-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
+.basis-chip { font-size: 11px; font-weight: 600; padding: 3px 9px; border-radius: 999px; border: 1px solid var(--border-strong); color: var(--ink-dim); background: var(--panel-raised); }
+.basis-chip.company { color: var(--link); border-color: var(--link-dim); }
+.basis-chip.sector { color: var(--accent-strong); border-color: rgba(var(--accent-rgb), 0.5); }
+.pick-reasoning { font-size: 14px; line-height: 1.55; margin-bottom: 10px; }
+.pick-today { font-size: 13.5px; padding: 8px 0; border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); margin-bottom: 12px; }
+.pick-today .k, .desk-levels .k { font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--ink-dim); font-weight: 700; margin-right: 6px; }
+.pick-chart { margin: 4px 0 12px; }
+.pick-actions { display: flex; gap: 8px; flex-wrap: wrap; margin: 12px 0 8px; }
+.pick-fine { font-size: 11px; color: var(--ink-dim); line-height: 1.5; margin-top: 8px; }
+.record-line { font-size: 12.5px; line-height: 1.55; color: var(--ink-dim); margin: 10px 0; padding: 8px 12px; background: var(--panel-raised); border-radius: var(--radius-sm); border: 1px solid var(--border); }
+.record-line strong { color: var(--ink); }
+
+/* candlestick chart (colors are tokens, so both themes work) */
+.candle-chart { width: 100%; height: auto; display: block; background: var(--panel-raised); border: 1px solid var(--border); border-radius: var(--radius-sm); }
+.candle-chart .wick.up { stroke: var(--candle-up); }
+.candle-chart .wick.down { stroke: var(--candle-down); }
+.candle-chart .body.up { fill: var(--candle-up); }
+.candle-chart .body.down { fill: var(--candle-down); }
+.candle-chart .lvl { stroke-width: 1; stroke-dasharray: 5 4; opacity: 0.85; }
+.candle-chart .lvl-stop { stroke: var(--bearish); }
+.candle-chart .lvl-target { stroke: var(--bullish); }
+.candle-chart .lvl-support, .candle-chart .lvl-resistance { stroke: var(--ink-dim); stroke-dasharray: 2 4; }
+.candle-chart .lvl-text, .candle-chart .axis-text { font-family: 'IBM Plex Mono', monospace; font-size: 9.5px; fill: var(--ink-dim); stroke: none; }
+.candle-chart .lvl-text.lvl-stop { fill: var(--bearish); }
+.candle-chart .lvl-text.lvl-target { fill: var(--bullish); }
+
+/* trader's desk */
+.desk { border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 12px 14px; margin: 10px 0; background: var(--panel-raised); }
+.desk-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; }
+.desk-verdict { font-weight: 700; font-size: 13.5px; }
+.desk-verdict.agree { color: var(--bullish); }
+.desk-verdict.disagree, .desk-verdict.notrade { color: var(--bearish); }
+.desk-verdict.mixed { color: var(--accent-strong); }
+.desk-aligned { font-family: 'IBM Plex Mono', monospace; font-size: 12px; color: var(--ink-dim); }
+.desk-reason, .desk-invalidation { font-size: 12.5px; color: var(--ink-dim); line-height: 1.5; margin: 6px 0; }
+.desk-invalidation { color: var(--ink); font-weight: 600; }
+.desk-checks { list-style: none; margin: 8px 0; padding: 0; font-size: 12.5px; line-height: 1.5; }
+.desk-checks li { padding: 3px 0; }
+.desk-checks .mark { display: inline-block; width: 18px; font-weight: 700; }
+.desk-checks li.ok .mark { color: var(--bullish); }
+.desk-checks li.no .mark { color: var(--bearish); }
+.desk-levels { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin: 8px 0; }
+@media (max-width: 560px) { .desk-levels { grid-template-columns: 1fr 1fr; } }
+.desk-levels > div { background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 6px 10px; }
+.desk-levels .k { display: block; margin: 0 0 2px; }
+.desk-levels .v { font-family: 'IBM Plex Mono', monospace; font-size: 14px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.desk-size { display: block; font-size: 12.5px; margin-top: 8px; line-height: 1.7; }
+.risk-input { width: 74px; display: inline-block; padding: 3px 6px; font-family: 'IBM Plex Mono', monospace; }
+.desk-empty { font-size: 12.5px; color: var(--ink-dim); }
+
+/* why button + modal */
+.why-btn { display: inline-block; width: auto; padding: 2px 9px; margin-left: 6px; font-size: 11.5px; font-weight: 600; background: transparent; color: var(--link); border: 1px solid var(--link-dim); border-radius: 999px; vertical-align: middle; }
+.why-btn:hover { background: var(--accent-dim); }
+.why-panel { max-width: 720px; }
+.why-heading { font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--ink-dim); font-weight: 700; margin-bottom: 4px; }
+.why-title { margin: 0 0 10px; font-size: 20px; }
+.why-call { padding: 10px 14px; border-radius: var(--radius-sm); background: var(--panel-raised); border-left: 4px solid var(--border-strong); font-weight: 600; font-size: 14px; }
+.why-call.up { border-left-color: var(--bullish); }
+.why-call.down { border-left-color: var(--bearish); }
+.why-p { font-size: 13px; line-height: 1.55; margin: 0 0 8px; }
+
+/* tracked stock: this week / next week */
+.stock-week { margin: 10px 0 14px; }
+.stock-week-head { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-bottom: 8px; font-size: 13px; }
+.stock-week-lean { margin-left: auto; }
+.week-lean { font-weight: 700; }
+.week-lean.bullish { color: var(--bullish); }
+.week-lean.bearish { color: var(--bearish); }
+.week-lean.flat { color: var(--ink-dim); }
+.stock-week-cells { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 6px; }
+.day-cell.static { cursor: default; flex-direction: column; min-height: 64px; display: flex; align-items: center; justify-content: center; gap: 2px; }
+.day-cell.static:hover { transform: none; box-shadow: none; }
+.day-cell .day-name { font-size: 10px; color: var(--ink-dim); font-weight: 600; }
+.day-cell.state-bullish .day-name, .day-cell.state-bearish .day-name { color: inherit; opacity: 0.85; }
+
+/* radar + backtest additions */
+.radar-row { display: flex; align-items: center; gap: 12px; padding: 9px 12px; margin-bottom: 6px; background: var(--panel-raised); border: 1px solid var(--border); border-left: 3px solid var(--border-strong); border-radius: var(--radius-sm); font-size: 13.5px; }
+.radar-row.up { border-left-color: var(--bullish); }
+.radar-row.down { border-left-color: var(--bearish); }
+.radar-row > div:first-child { flex: 1; }
+.radar-dir { font-weight: 700; font-family: 'IBM Plex Mono', monospace; }
+.fresh-badge { font-family: 'IBM Plex Mono', monospace; font-size: 11px; padding: 4px 10px; border-radius: 999px; border: 1px solid var(--border-strong); color: var(--ink-dim); }
+.fresh-badge.late { color: var(--bearish); border-color: rgba(var(--bear-rgb), 0.6); background: rgba(var(--bear-rgb), 0.08); }
+.null-table td, .null-table th { font-variant-numeric: tabular-nums; }
+.bt-flat { color: var(--ink-dim); }
+.cand-details { margin-top: 12px; font-size: 13px; }
+.cand-details summary { cursor: pointer; color: var(--link); font-weight: 600; padding: 4px 0; }
+tr.row-pick td { background: var(--accent-dim); }
+.chat-unavailable { font-size: 12.5px; line-height: 1.55; color: var(--ink-dim); padding: 10px 12px; margin-bottom: 10px; background: var(--panel-raised); border: 1px dashed var(--border-strong); border-radius: var(--radius-sm); }
+.chat-rail input:disabled, .chat-rail button:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* grid items default to min-width:auto, so one wide child (a table, the candle chart) would stretch the whole column past the viewport */
+.tab-content, .main-layout > * { min-width: 0; }
