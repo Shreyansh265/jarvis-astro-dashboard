@@ -21,6 +21,7 @@ import trading_calendar as cal
 import os
 import pick_of_week as pow_
 import stock_outlook as so
+import trader_desk
 from rulerships import SECTOR_STOCK_UNIVERSE
 
 MAX_PICKS = 5
@@ -98,7 +99,8 @@ def _build_pick_of_week(forecast, trading_days, first, last):
         "ticker": pick["ticker"], "sector": pick["sector"], "etf_ticker": SECTOR_TICKERS.get(pick["sector"]),
         "direction": pick["direction"], "rank": 0, "strength": abs(pick["composite"]),
         "reasoning": pow_.build_reasoning(pick), "plain_reasons": plain, "status": "pending",
-        "pick_of_week": True, "factors": pow_.build_factors(pick, plain), "trader_desk": None,
+        "pick_of_week": True, "factors": pow_.build_factors(pick, plain),
+        "trader_desk": trader_desk.safe_desk(pick["ticker"], pick["direction"]),   # None if fetch fails; never blocks the pick
         "record_snapshot": pow_.record_snapshot(history), "rules_version": pow_.cc.RULES_VERSION,
     }
     cand_rows = [_candidate_row(c, first, last, is_pick=c["rank"] == 1) for c in cands[:pow_.TOP_N]]

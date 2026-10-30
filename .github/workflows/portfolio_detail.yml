@@ -42,3 +42,14 @@ jobs:
           SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
           FINNHUB_API_KEY: ${{ secrets.FINNHUB_API_KEY }}
         run: python portfolio_detail.py
+
+      - name: Refresh trader's desk technicals
+        # Pure Python, one daily-bars call per tracked ticker + SPY. Skips itself
+        # (loudly) until schema v2 is applied; a failure must not fail the job above.
+        continue-on-error: true
+        working-directory: engine
+        env:
+          TWELVE_DATA_API_KEY: ${{ secrets.TWELVE_DATA_API_KEY }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+        run: python trader_desk.py
