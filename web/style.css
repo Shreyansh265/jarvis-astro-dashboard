@@ -439,6 +439,7 @@ button.ghost:hover { color: #fff; background: var(--link); border-color: var(--l
 .bt-dir.down { color: var(--bearish); }
 .bt-verdict { margin: 12px 0 8px; font-weight: 700; font-size: 13px; padding: 8px 12px; border-radius: var(--radius-sm); }
 .bt-verdict.right { background: rgba(46, 158, 107, 0.12); color: #1d6e49; }
+.bt-verdict.flat { background: var(--panel-raised); color: var(--ink-dim); }
 .bt-verdict.wrong { background: rgba(214, 69, 80, 0.12); color: #a52d38; }
 .bt-pending { margin-top: 12px; font-size: 12.5px; color: var(--ink-dim); padding: 10px 12px; border: 1px dashed var(--border-strong); border-radius: var(--radius-sm); }
 .bt-returns { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 10px 0; }

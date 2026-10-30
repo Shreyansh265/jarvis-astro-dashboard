@@ -46,6 +46,8 @@ def _catch_up_stragglers(week_start) -> None:
         if outcome is None:
             continue
         db.update("predictions", {"id": f"eq.{pred['id']}"}, {"reviewed": True, **outcome})
+        if outcome["was_correct"] is None:
+            continue  # no-call (neutral/flat): nothing to learn from
         for planet in pred.get("contributing_planets", []):
             weight_deltas.setdefault(planet, []).append(1 if outcome["was_correct"] else -1)
 

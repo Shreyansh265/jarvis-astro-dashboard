@@ -49,6 +49,9 @@ def run_daily_review() -> dict:
         })
         reviewed_count += 1
 
+        if outcome["was_correct"] is None:
+            continue  # neutral / flat: no claim made, nothing to learn from
+
         for planet in pred.get("contributing_planets", []):
             weight_deltas.setdefault(planet, []).append(1 if outcome["was_correct"] else -1)
 

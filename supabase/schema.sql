@@ -192,7 +192,11 @@ set search_path = public
 as $$
   update suggested_stocks set is_active = false, removed_at = now() where id = p_id;
 $$;
-grant execute on function remove_suggested_stock(bigint) to anon;
+-- Was granted to anon: any anonymous visitor could hide any shared suggestion for
+-- every user (verified live, HTTP 204). Signed-in users only now (the suggestion
+-- list is being retired; this keeps the old button working until then).
+revoke execute on function remove_suggested_stock(bigint) from anon, public;
+grant execute on function remove_suggested_stock(bigint) to authenticated;
 
 -- Curated-watchlist daily price scan: powers "top gainers/losers" (Twelve
 -- Data's free tier has no market-wide movers endpoint) and the "current

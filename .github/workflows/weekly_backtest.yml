@@ -7,11 +7,16 @@ on:
     # is a catch-up for any week whose Friday bar wasn't available yet.
     - cron: '30 22 * * 5'
     - cron: '0 15 * * 6'
+    # Monday retry: if Friday's and Saturday's runs both missed a bar, try once more
+    # before the new week's picks start trading.
+    - cron: '0 12 * * 1'
   workflow_dispatch: {}
 
-# Shared with every other Twelve Data job: queue, never overlap.
+# Its OWN group: GitHub keeps only one pending run per group and cancels older
+# pending ones, so sharing 'twelvedata' with a delayed portfolio_detail run could
+# silently cancel this scoring run.
 concurrency:
-  group: twelvedata
+  group: weekly-backtest
   cancel-in-progress: false
 
 jobs:

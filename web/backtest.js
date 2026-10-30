@@ -59,7 +59,8 @@ function _weekLabel(weekStart) {
 function weeklyPickStats(picks) {
   const out = {};
   for (const dir of ["bullish", "bearish"]) {
-    const done = picks.filter(p => p.status === "complete" && p.direction === dir);
+    // was_correct === null is a flat week ("no call"): neither a hit nor a miss.
+    const done = picks.filter(p => p.status === "complete" && p.direction === dir && p.was_correct !== null && p.was_correct !== undefined);
     const right = done.filter(p => p.was_correct).length;
     const withSpy = done.filter(p => p.stock_return_pct !== null && p.spy_return_pct !== null);
     const excess = withSpy.length
@@ -106,7 +107,7 @@ function _pickCard(p) {
   let result;
   if (p.status === "complete") {
     result = `
-      <div class="bt-verdict ${p.was_correct ? "right" : "wrong"}">${p.was_correct ? "✔ Right" : "✘ Wrong"} — ${up ? "expected up" : "expected down"}, ${escapeHtml(p.ticker)} ${Number(p.stock_return_pct) >= 0 ? "rose" : "fell"} ${Math.abs(Number(p.stock_return_pct)).toFixed(2)}% over the week</div>
+      <div class="bt-verdict ${p.was_correct === null ? "flat" : (p.was_correct ? "right" : "wrong")}">${p.was_correct === null ? "— Flat week (no call)" : (p.was_correct ? "✔ Right" : "✘ Wrong")} — ${up ? "expected up" : "expected down"}, ${escapeHtml(p.ticker)} ${Number(p.stock_return_pct) >= 0 ? "rose" : "fell"} ${Math.abs(Number(p.stock_return_pct)).toFixed(2)}% over the week</div>
       ${_miniBars(p.daily_closes, p.entry_price)}
       <div class="bt-returns">
         <div class="stat-tile"><div class="stat-label">${escapeHtml(p.ticker)}</div><div class="stat-value ${_pctClass(p.stock_return_pct)}">${_pct(p.stock_return_pct)}</div></div>
@@ -122,7 +123,7 @@ function _pickCard(p) {
     result = `<div class="bt-pending">⏳ ${msg}</div>`;
   }
   return `
-    <div class="bt-pick ${up ? "up" : "down"} ${p.status === "complete" ? (p.was_correct ? "right" : "wrong") : "pending"}">
+    <div class="bt-pick ${up ? "up" : "down"} ${p.status === "complete" ? (p.was_correct === null ? "flat" : (p.was_correct ? "right" : "wrong")) : "pending"}">
       <div class="bt-pick-top">
         <div><span class="bt-pick-name">${escapeHtml(_stockName(p.ticker))}</span> <span class="week-ticker">${escapeHtml(p.ticker)}</span></div>
         <span class="bt-dir ${up ? "up" : "down"}">${up ? "▲ Expected UP" : "▼ Expected DOWN"}</span>

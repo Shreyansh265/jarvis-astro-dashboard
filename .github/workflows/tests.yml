@@ -1,0 +1,27 @@
+name: Engine tests
+
+on:
+  push:
+    paths: ['engine/**', '.github/workflows/tests.yml']
+  pull_request:
+    paths: ['engine/**']
+  workflow_dispatch: {}
+
+jobs:
+  pytest:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      # Real pyswisseph builds fine on Actions; tests only need pure logic, and
+      # conftest.py falls back to a stand-in if it isn't importable.
+      - name: Install dependencies
+        run: pip install -r engine/requirements.txt pytest
+
+      - name: Run tests
+        working-directory: engine
+        run: python -m pytest tests -q

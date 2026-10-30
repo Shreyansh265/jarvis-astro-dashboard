@@ -21,8 +21,16 @@ def score_prediction(prediction: dict, comparison_price: float):
     if not start_price:
         return None
     actual_pct = round((comparison_price - start_price) / start_price * 100, 2)
-    actual_direction = "bullish" if actual_pct > 0 else "bearish"
-    was_correct = (actual_direction == prediction["direction"])
+    actual_direction = "bullish" if actual_pct > 0 else ("bearish" if actual_pct < 0 else "flat")
+    # A neutral prediction makes no directional claim, so it can't be right or
+    # wrong: was_correct stays NULL (the weekly review already excludes NULLs).
+    # Scoring it "wrong" was a live bug -- 75 of 75 neutral calls were marked
+    # wrong, dragging accuracy down and pushing rule weights down for days
+    # that never claimed anything. An exactly flat move is likewise no call.
+    if prediction["direction"] == "neutral" or actual_direction == "flat":
+        was_correct = None
+    else:
+        was_correct = (actual_direction == prediction["direction"])
     return {
         "outcome_direction": actual_direction,
         "outcome_pct_change": actual_pct,
