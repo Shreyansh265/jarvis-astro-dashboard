@@ -1,0 +1,79 @@
+ticker,name,first_trade_date,confidence,note
+AAPL,Apple,1980-12-12,known,IPO
+MSFT,Microsoft,1986-03-13,known,IPO
+NVDA,NVIDIA,1999-01-22,known,IPO
+AVGO,Broadcom,2009-08-06,known,IPO (Avago Technologies)
+ORCL,Oracle,1986-03-12,known,IPO
+CRM,Salesforce,2004-06-23,known,IPO
+ADBE,Adobe,1986-08-20,known,IPO
+CSCO,Cisco,1990-02-16,known,IPO
+INTC,Intel,1971-10-13,known,IPO
+QCOM,Qualcomm,1991-12-13,known,IPO
+PLTR,Palantir,2020-09-30,known,Direct listing
+PANW,Palo Alto Networks,2012-07-20,known,IPO
+NOW,ServiceNow,2012-06-29,known,IPO
+INTU,Intuit,1993-03-12,known,IPO
+AMD,Advanced Micro Devices,1972-09-27,verify,Best recollection of the NYSE listing
+AMAT,Applied Materials,1972-10-17,verify,Best recollection of the IPO
+SNPS,Synopsys,1992-02-26,verify,Best recollection of the IPO
+GS,Goldman Sachs,1999-05-04,known,IPO
+MS,Morgan Stanley,1986-02-24,known,IPO
+V,Visa,2008-03-19,known,IPO
+MA,Mastercard,2006-05-25,known,IPO
+BLK,BlackRock,1999-10-01,known,IPO
+CME,CME Group,2002-12-06,known,IPO
+BRK.B,Berkshire Hathaway B,1996-05-09,known,Class B shares created
+SCHW,Charles Schwab,1987-09-23,verify,Best recollection of the IPO
+UNH,UnitedHealth,1984-10-17,known,IPO
+ABBV,AbbVie,2013-01-02,known,Spin-off from Abbott (regular way)
+AMGN,Amgen,1983-06-17,known,IPO
+GILD,Gilead,1992-01-22,known,IPO
+ISRG,Intuitive Surgical,2000-06-13,known,IPO
+VRTX,Vertex,1991-07-24,known,IPO
+REGN,Regeneron,1991-04-02,known,IPO
+UPS,United Parcel Service,1999-11-10,known,IPO
+FDX,FedEx,1978-04-12,verify,Best recollection of the IPO
+AMZN,Amazon,1997-05-15,known,IPO
+TSLA,Tesla,2010-06-29,known,IPO
+NKE,Nike,1980-12-02,known,IPO
+SBUX,Starbucks,1992-06-26,known,IPO
+MCD,McDonald's,1965-04-21,known,IPO
+HD,Home Depot,1981-09-22,known,IPO
+ABNB,Airbnb,2020-12-10,known,IPO
+CMG,Chipotle,2006-01-26,known,IPO
+LULU,Lululemon,2007-07-27,known,IPO
+GM,General Motors,2010-11-18,known,Re-IPO after bankruptcy
+F,Ford,1956-01-17,known,IPO
+ORLY,O'Reilly Automotive,1993-04-22,verify,Best recollection of the IPO
+COST,Costco,1985-12-05,known,IPO (Costco Wholesale)
+KO,Coca-Cola,1919-09-05,known,IPO
+WMT,Walmart,1972-08-25,verify,NYSE listing (IPO was 1970)
+GOOGL,Alphabet,2004-08-19,known,IPO
+META,Meta Platforms,2012-05-18,known,IPO
+NFLX,Netflix,2002-05-23,known,IPO
+TMUS,T-Mobile US,2013-05-01,verify,Began trading after MetroPCS merger
+EA,Electronic Arts,1989-09-20,verify,Best recollection of the IPO
+TTWO,Take-Two Interactive,1997-04-16,verify,Best recollection of the IPO
+SHOP,Shopify,2015-05-21,known,NYSE IPO
+UBER,Uber,2019-05-10,known,IPO
+LYFT,Lyft,2019-03-29,known,IPO
+SNOW,Snowflake,2020-09-16,known,IPO
+COIN,Coinbase,2021-04-14,known,Direct listing
+ZM,Zoom,2019-04-18,known,IPO
+PINS,Pinterest,2019-04-18,known,IPO
+SNAP,Snap,2017-03-02,known,IPO
+ROKU,Roku,2017-09-28,known,IPO
+CRWD,CrowdStrike,2019-06-12,known,IPO
+DDOG,Datadog,2019-09-19,known,IPO
+NET,Cloudflare,2019-09-13,known,IPO
+SPOT,Spotify,2018-04-03,known,Direct listing
+RIVN,Rivian,2021-11-10,known,IPO
+MRNA,Moderna,2018-12-07,known,IPO
+PYPL,PayPal,2015-07-20,known,Spin-off from eBay (regular way)
+SQ,Block (Square),2015-11-19,known,IPO
+DASH,DoorDash,2020-12-09,known,IPO
+RBLX,Roblox,2021-03-10,known,Direct listing
+HOOD,Robinhood,2021-07-29,known,IPO
+SPY,SPDR S&P 500 ETF,1993-01-29,known,Fund launch
+QQQ,Invesco QQQ,1999-03-10,known,Fund launch
+GLD,SPDR Gold Shares,2004-11-18,known,Fund launch

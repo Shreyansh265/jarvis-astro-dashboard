@@ -11,6 +11,8 @@ import forecast
 
 if __name__ == "__main__":
     forecast.run_forecast()
+    import company_chart
+    company_chart.sync_company_charts()   # no-op (loudly) until schema v2 is applied
     if os.environ.get("WITH_ANALOGS") == "1":
         import analogs
         print(f"analogs refreshed: {analogs.refresh_analogs()}")
